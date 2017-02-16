@@ -1,0 +1,12 @@
+{
+  "uuid" : "453508af-5643-4d98-a50c-513ea5ced02f",
+ 
+  "last_modified" : 0,
+  "name" : "lineitem_cube",
+  "owner" : null,
+  "descriptor" : "lineitem_cube",
+  "status" : "DISABLED",
+  "segments" : [ ],
+  "create_time" : null,
+  "auto_merge_time_ranges" : null
+}

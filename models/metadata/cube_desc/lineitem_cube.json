@@ -1,0 +1,543 @@
+{
+  "uuid" : "0978dba2-2d98-4663-b886-01ccbe5210e0",
+  "last_modified" : 1483199088652,
+  "version" : "2.0.0",
+  "name" : "lineitem_cube",
+  "model_name" : "lineitem_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "L_ORDERKEY",
+    "table" : "V_LINEITEM",
+    "column" : "L_ORDERKEY",
+    "derived" : null
+  }, {
+    "name" : "L_PARTKEY",
+    "table" : "V_LINEITEM",
+    "column" : "L_PARTKEY",
+    "derived" : null
+  }, {
+    "name" : "L_QUANTITY",
+    "table" : "V_LINEITEM",
+    "column" : "L_QUANTITY",
+    "derived" : null
+  }, {
+    "name" : "L_RETURNFLAG",
+    "table" : "V_LINEITEM",
+    "column" : "L_RETURNFLAG",
+    "derived" : null
+  }, {
+    "name" : "L_LINESTATUS",
+    "table" : "V_LINEITEM",
+    "column" : "L_LINESTATUS",
+    "derived" : null
+  }, {
+    "name" : "L_SHIPDATE",
+    "table" : "V_LINEITEM",
+    "column" : "L_SHIPDATE",
+    "derived" : null
+  }, {
+    "name" : "L_RECEIPTDATE",
+    "table" : "V_LINEITEM",
+    "column" : "L_RECEIPTDATE",
+    "derived" : null
+  }, {
+    "name" : "L_SHIPINSTRUCT",
+    "table" : "V_LINEITEM",
+    "column" : "L_SHIPINSTRUCT",
+    "derived" : null
+  }, {
+    "name" : "L_SHIPMODE",
+    "table" : "V_LINEITEM",
+    "column" : "L_SHIPMODE",
+    "derived" : null
+  }, {
+    "name" : "L_SHIPYEAR",
+    "table" : "V_LINEITEM",
+    "column" : "L_SHIPYEAR",
+    "derived" : null
+  }, {
+    "name" : "L_RECEIPTDELAYED",
+    "table" : "V_LINEITEM",
+    "column" : "L_RECEIPTDELAYED",
+    "derived" : null
+  }, {
+    "name" : "L_SHIPDELAYED",
+    "table" : "V_LINEITEM",
+    "column" : "L_SHIPDELAYED",
+    "derived" : null
+  }, {
+    "name" : "L_DISCOUNT",
+    "table" : "V_LINEITEM",
+    "column" : "L_DISCOUNT",
+    "derived" : null
+  }, {
+    "name" : "O_CUSTKEY",
+    "table" : "V_ORDERS",
+    "column" : "O_CUSTKEY",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERSTATUS",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERSTATUS",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERDATE",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERDATE",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERPRIORITY",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERPRIORITY",
+    "derived" : null
+  }, {
+    "name" : "O_SHIPPRIORITY",
+    "table" : "V_ORDERS",
+    "column" : "O_SHIPPRIORITY",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERYEAR",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERYEAR",
+    "derived" : null
+  }, {
+    "name" : "S_SUPPKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_SUPPKEY" ]
+  }, {
+    "name" : "S_NAME",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NAME" ]
+  }, {
+    "name" : "S_ADDRESS",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_ADDRESS" ]
+  }, {
+    "name" : "S_NATIONKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NATIONKEY" ]
+  }, {
+    "name" : "S_PHONE",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_PHONE" ]
+  }, {
+    "name" : "S_ACCTBAL",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_ACCTBAL" ]
+  }, {
+    "name" : "S_COMMENT",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_COMMENT" ]
+  }, {
+    "name" : "P_NAME",
+    "table" : "PART",
+    "column" : "P_NAME",
+    "derived" : null
+  }, {
+    "name" : "P_MFGR",
+    "table" : "PART",
+    "column" : "P_MFGR",
+    "derived" : null
+  }, {
+    "name" : "P_BRAND",
+    "table" : "PART",
+    "column" : "P_BRAND",
+    "derived" : null
+  }, {
+    "name" : "P_TYPE",
+    "table" : "PART",
+    "column" : "P_TYPE",
+    "derived" : null
+  }, {
+    "name" : "P_SIZE",
+    "table" : "PART",
+    "column" : "P_SIZE",
+    "derived" : null
+  }, {
+    "name" : "P_CONTAINER",
+    "table" : "PART",
+    "column" : "P_CONTAINER",
+    "derived" : null
+  }, {
+    "name" : "C_NAME",
+    "table" : "CUSTOMER",
+    "column" : "C_NAME",
+    "derived" : null
+  }, {
+    "name" : "C_MKTSEGMENT",
+    "table" : "CUSTOMER",
+    "column" : "C_MKTSEGMENT",
+    "derived" : null
+  }, {
+    "name" : "N_NAME",
+    "table" : "S_NATION",
+    "column" : "N_NAME",
+    "derived" : null
+  }, {
+    "name" : "N_NAME",
+    "table" : "C_NATION",
+    "column" : "N_NAME",
+    "derived" : null
+  }, {
+    "name" : "R_NAME",
+    "table" : "S_REGION",
+    "column" : "R_NAME",
+    "derived" : null
+  }, {
+    "name" : "R_NAME",
+    "table" : "C_REGION",
+    "column" : "R_NAME",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "EXTENDEDPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_EXTENDEDPRICE"
+      },
+      "returntype" : "decimal"
+    }
+  }, {
+    "name" : "SALEPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_SALEPRICE"
+      },
+      "returntype" : "decimal"
+    }
+  }, {
+    "name" : "TAXPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_TAXPRICE"
+      },
+      "returntype" : "decimal"
+    }
+  }, {
+    "name" : "SUPPLYCOST_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_SUPPLYCOST"
+      },
+      "returntype" : "decimal"
+    }
+  }, {
+    "name" : "DISCOUNT_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_DISCOUNT"
+      },
+      "returntype" : "decimal"
+    }
+  }, {
+    "name" : "QUANTITY_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_QUANTITY"
+      },
+      "returntype" : "decimal"
+    }
+  }, {
+    "name" : "COUNT_DISTINCT_SUPPKEY",
+    "function" : {
+      "expression" : "COUNT_DISTINCT",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_SUPPKEY"
+      },
+      "returntype" : "hllc(10)"
+    }
+  }, {
+    "name" : "EXTENDED_C_ADDRESS",
+    "function" : {
+      "expression" : "EXTENDED_COLUMN",
+      "parameter": {
+        "type": "column",
+        "value": "V_ORDERS.O_CUSTKEY",
+        "next_parameter": {
+          "type": "column",
+          "value": "CUSTOMER.C_ADDRESS"
+        }
+      },
+      "returntype" : "extendedcolumn(200)"
+    }
+  }, {
+    "name" : "EXTENDED_C_PHONE",
+    "function" : {
+      "expression" : "EXTENDED_COLUMN",
+      "parameter": {
+        "type": "column",
+        "value": "V_ORDERS.O_CUSTKEY",
+        "next_parameter": {
+          "type": "column",
+          "value": "CUSTOMER.C_PHONE"
+        }
+      },
+      "returntype" : "extendedcolumn(200)"
+    }
+  }, {
+    "name" : "EXTENDED_C_COMMENT",
+    "function" : {
+      "expression" : "EXTENDED_COLUMN",
+      "parameter": {
+        "type": "column",
+        "value": "V_ORDERS.O_CUSTKEY",
+        "next_parameter": {
+          "type": "column",
+          "value": "CUSTOMER.C_COMMENT"
+        }
+      },
+      "returntype" : "extendedcolumn(200)"
+    }
+  }, {
+    "name" : "EXTENDED_C_ACCTBAL",
+    "function" : {
+      "expression" : "EXTENDED_COLUMN",
+      "parameter": {
+        "type": "column",
+        "value": "V_ORDERS.O_CUSTKEY",
+        "next_parameter": {
+          "type": "column",
+          "value": "CUSTOMER.C_ACCTBAL"
+        }
+      },
+      "returntype" : "extendedcolumn(200)"
+    }
+  }, {
+    "name" : "EXTENDED_O_TOTALPRICE",
+    "function" : {
+      "expression" : "EXTENDED_COLUMN",
+      "parameter": {
+        "type": "column",
+        "value": "V_LINEITEM.L_ORDERKEY",
+        "next_parameter": {
+          "type": "column",
+          "value": "V_ORDERS.O_TOTALPRICE"
+        }
+      },
+      "returntype" : "extendedcolumn(200)"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_LINEITEM.L_SHIPDATE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_SHIPYEAR",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERDATE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERYEAR",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_ORDERKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_PARTKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_MFGR",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_BRAND",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_TYPE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_SIZE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_CONTAINER",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_CUSTKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_SUPPKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_NAME",
+      "encoding" : "fixed_length:18",
+      "isShardBy" : false
+    }, {
+      "column" : "S_NATION.N_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "C_NATION.N_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "S_REGION.R_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "C_REGION.R_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_MKTSEGMENT",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_QUANTITY",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_DISCOUNT",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_SHIPMODE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_SHIPINSTRUCT",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_LINESTATUS",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_RETURNFLAG",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_RECEIPTDATE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_RECEIPTDELAYED",
+      "encoding" : "boolean",
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_SHIPDELAYED",
+      "encoding" : "boolean",
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERSTATUS",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERPRIORITY",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_SHIPPRIORITY",
+      "encoding" : "dict",
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "EXTENDEDPRICE_SUM", "SALEPRICE_SUM", "TAXPRICE_SUM", "SUPPLYCOST_SUM", "DISCOUNT_SUM", "QUANTITY_SUM" ]
+      } ]
+    }, {
+      "name" : "F2",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "COUNT_DISTINCT_SUPPKEY" ]
+      } ]
+    }, {
+      "name" : "F3",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "EXTENDED_C_ADDRESS", "EXTENDED_C_PHONE", "EXTENDED_C_COMMENT", "EXTENDED_C_ACCTBAL", "EXTENDED_O_TOTALPRICE" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "S_NATION.N_NAME", "C_NATION.N_NAME", "S_REGION.R_NAME", "C_REGION.R_NAME", "V_LINEITEM.L_SHIPMODE", "CUSTOMER.C_MKTSEGMENT", "V_LINEITEM.L_SHIPYEAR", "V_LINEITEM.L_SHIPDATE", "V_ORDERS.O_ORDERYEAR", "V_ORDERS.O_ORDERDATE", "V_LINEITEM.L_LINESTATUS", "V_LINEITEM.L_RETURNFLAG", "V_LINEITEM.L_SHIPDELAYED", "V_LINEITEM.L_RECEIPTDELAYED", "V_ORDERS.O_ORDERPRIORITY", "V_ORDERS.O_ORDERSTATUS", "V_LINEITEM.L_RECEIPTDATE", "V_ORDERS.O_SHIPPRIORITY" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ [ "V_LINEITEM.L_SHIPYEAR", "V_LINEITEM.L_SHIPDATE", "V_LINEITEM.L_RECEIPTDATE" ], [ "V_ORDERS.O_ORDERYEAR", "V_ORDERS.O_ORDERDATE" ] ],
+      "mandatory_dims" : [ ],
+      "joint_dims" : [ [ "S_NATION.N_NAME", "C_NATION.N_NAME", "S_REGION.R_NAME", "C_REGION.R_NAME" ], [ "V_LINEITEM.L_SHIPMODE", "CUSTOMER.C_MKTSEGMENT" ], [ "V_LINEITEM.L_LINESTATUS", "V_LINEITEM.L_RETURNFLAG", "V_LINEITEM.L_RECEIPTDELAYED", "V_LINEITEM.L_SHIPDELAYED" ], [ "V_ORDERS.O_ORDERPRIORITY", "V_ORDERS.O_ORDERSTATUS", "V_ORDERS.O_SHIPPRIORITY" ] ]
+    }
+  }, {
+    "includes" : [ "V_LINEITEM.L_ORDERKEY", "V_ORDERS.O_ORDERYEAR", "V_ORDERS.O_ORDERDATE", "V_ORDERS.O_ORDERPRIORITY", "V_ORDERS.O_CUSTKEY", "CUSTOMER.C_NAME", "V_LINEITEM.L_SHIPYEAR", "V_LINEITEM.L_SHIPDATE", "V_LINEITEM.L_RECEIPTDELAYED", "V_ORDERS.O_SHIPPRIORITY" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ "V_LINEITEM.L_ORDERKEY", "V_ORDERS.O_ORDERYEAR", "V_ORDERS.O_ORDERDATE", "V_ORDERS.O_ORDERPRIORITY", "V_ORDERS.O_CUSTKEY", "CUSTOMER.C_NAME", "V_ORDERS.O_SHIPPRIORITY" ],
+      "joint_dims" : [ [ "V_LINEITEM.L_SHIPYEAR", "V_LINEITEM.L_SHIPDATE" ] ]
+    }
+  }, {
+    "includes" : [ "V_LINEITEM.L_SHIPMODE", "V_LINEITEM.L_SHIPINSTRUCT", "PART.P_BRAND", "PART.P_CONTAINER", "PART.P_SIZE", "V_LINEITEM.L_QUANTITY" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ "V_LINEITEM.L_SHIPMODE", "V_LINEITEM.L_SHIPINSTRUCT", "PART.P_BRAND", "PART.P_CONTAINER", "PART.P_SIZE", "V_LINEITEM.L_QUANTITY" ],
+      "joint_dims" : [ ]
+    }
+  }, {
+    "includes" : [ "V_LINEITEM.L_PARTKEY", "V_LINEITEM.L_QUANTITY", "PART.P_BRAND", "PART.P_CONTAINER", "V_LINEITEM.L_SHIPYEAR", "V_LINEITEM.L_SHIPDATE", "V_LINEITEM.L_DISCOUNT" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ [ "V_LINEITEM.L_DISCOUNT", "V_LINEITEM.L_SHIPYEAR", "V_LINEITEM.L_SHIPDATE" ], [ "V_LINEITEM.L_PARTKEY", "PART.P_BRAND", "PART.P_CONTAINER" ] ],
+      "mandatory_dims" : [ "V_LINEITEM.L_QUANTITY" ],
+      "joint_dims" : [ ]
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "partition_date_start" : 0,
+  "auto_merge_time_ranges" : [ ],
+  "retention_range" : 0,
+  "engine_type" : 2,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true"
+  }
+}

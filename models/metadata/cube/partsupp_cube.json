@@ -1,0 +1,12 @@
+{
+  "uuid" : "13ad0735-32a7-43a2-bd81-3753b5396cbc",
+ 
+  "last_modified" : 0,
+  "name" : "partsupp_cube",
+  "owner" : null,
+  "descriptor" : "partsupp_cube",
+  "status" : "DISABLED",
+  "segments" : [ ],
+  "create_time" : null,
+  "auto_merge_time_ranges" : null
+}

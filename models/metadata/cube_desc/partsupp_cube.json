@@ -1,0 +1,217 @@
+{
+  "uuid" : "1dca1f8f-74c5-45b4-84a4-800a86230593",
+  "last_modified" : 1483008812615,
+  "version" : "1.6.1",
+  "name" : "partsupp_cube",
+  "model_name" : "partsupp_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "PS_PARTKEY",
+    "table" : "V_PARTSUPP",
+    "column" : "PS_PARTKEY",
+    "derived" : null
+  }, {
+    "name" : "PS_AVAILQTY",
+    "table" : "V_PARTSUPP",
+    "column" : "PS_AVAILQTY",
+    "derived" : null
+  }, {
+    "name" : "PS_SUPPLYCOST",
+    "table" : "V_PARTSUPP",
+    "column" : "PS_SUPPLYCOST",
+    "derived" : null
+  }, {
+    "name" : "S_SUPPKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_SUPPKEY" ]
+  }, {
+    "name" : "S_NAME",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NAME" ]
+  }, {
+    "name" : "S_ADDRESS",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_ADDRESS" ]
+  }, {
+    "name" : "S_NATIONKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NATIONKEY" ]
+  }, {
+    "name" : "S_PHONE",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_PHONE" ]
+  }, {
+    "name" : "S_ACCTBAL",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_ACCTBAL" ]
+  }, {
+    "name" : "S_COMMENT",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_COMMENT" ]
+  }, {
+    "name" : "P_NAME",
+    "table" : "PART",
+    "column" : "P_NAME",
+    "derived" : null
+  }, {
+    "name" : "P_MFGR",
+    "table" : "PART",
+    "column" : "P_MFGR",
+    "derived" : null
+  }, {
+    "name" : "P_BRAND",
+    "table" : "PART",
+    "column" : "P_BRAND",
+    "derived" : null
+  }, {
+    "name" : "P_TYPE",
+    "table" : "PART",
+    "column" : "P_TYPE",
+    "derived" : null
+  }, {
+    "name" : "P_SIZE",
+    "table" : "PART",
+    "column" : "P_SIZE",
+    "derived" : null
+  }, {
+    "name" : "N_NAME",
+    "table" : "NATION",
+    "column" : "N_NAME",
+    "derived" : null
+  }, {
+    "name" : "R_NAME",
+    "table" : "REGION",
+    "column" : "R_NAME",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "SUPPLYCOST_MIN",
+    "function" : {
+      "expression" : "MIN",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_PARTSUPP.PS_SUPPLYCOST"
+      },
+      "returntype" : "double"
+    }
+  }, {
+    "name" : "PARTVALUE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_PARTSUPP.PS_PARTVALUE"
+      },
+      "returntype" : "decimal"
+    }
+  }, {
+    "name" : "SUPPKEY_COUNT_DISTINCT",
+    "function" : {
+      "expression" : "COUNT_DISTINCT",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_PARTSUPP.PS_SUPPKEY"
+      },
+      "returntype" : "hllc(14)"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_PARTSUPP.PS_PARTKEY",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_PARTSUPP.PS_AVAILQTY",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_PARTSUPP.PS_SUPPKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_MFGR",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_BRAND",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_TYPE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_SIZE",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "NATION.N_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "REGION.R_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_NAME",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_PARTSUPP.PS_SUPPLYCOST",
+      "encoding" : "dict",
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "SUPPLYCOST_MIN", "PARTVALUE_SUM" ]
+      } ]
+    }, {
+      "name" : "F2",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "SUPPKEY_COUNT_DISTINCT" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "V_PARTSUPP.PS_PARTKEY", "V_PARTSUPP.PS_AVAILQTY", "V_PARTSUPP.PS_SUPPKEY", "PART.P_MFGR", "PART.P_BRAND", "PART.P_TYPE", "PART.P_SIZE", "NATION.N_NAME", "REGION.R_NAME", "PART.P_NAME", "V_PARTSUPP.PS_SUPPLYCOST" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ ],
+      "joint_dims" : [ [ "NATION.N_NAME", "REGION.R_NAME", "V_PARTSUPP.PS_SUPPLYCOST" ], [ "PART.P_SIZE", "PART.P_TYPE", "PART.P_MFGR", "PART.P_BRAND", "PART.P_NAME" ] ]
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "partition_date_start" : 0,
+  "auto_merge_time_ranges" : [ ],
+  "retention_range" : 0,
+  "engine_type" : 2,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true"
+  }
+}

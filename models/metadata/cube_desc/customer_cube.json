@@ -1,0 +1,89 @@
+{
+  "uuid" : "eb05a6e7-cf1c-4867-8a72-58771875711d",
+  "last_modified" : 1482829201470,
+  "version" : "1.6.1",
+  "name" : "customer_cube",
+  "model_name" : "customer_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "C_CUSTKEY",
+    "table" : "CUSTOMER",
+    "column" : "C_CUSTKEY",
+    "derived" : null
+  }, {
+    "name" : "C_PHONE",
+    "table" : "CUSTOMER",
+    "column" : "C_PHONE",
+    "derived" : null
+  }, {
+    "name" : "C_ACCTBAL",
+    "table" : "CUSTOMER",
+    "column" : "C_ACCTBAL",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "ACCBAL_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "CUSTOMER.C_ACCTBAL"
+      },
+      "returntype" : "decimal"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "CUSTOMER.C_CUSTKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_PHONE",
+      "encoding" : "fixed_length:15",
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_ACCTBAL",
+      "encoding" : "dict",
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "ACCBAL_SUM" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_PHONE", "CUSTOMER.C_ACCTBAL" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_PHONE", "CUSTOMER.C_ACCTBAL" ],
+      "joint_dims" : [ ]
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "partition_date_start" : 0,
+  "auto_merge_time_ranges" : [ ],
+  "retention_range" : 0,
+  "engine_type" : 2,
+  "storage_type" : 2,
+  "override_kylin_properties" : { 
+     "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true"
+  }
+}

@@ -1,0 +1,134 @@
+{
+  "uuid" : "366cdf60-1281-4a92-9e50-9778d6555c7e",
+  "last_modified" : 1482904039462,
+  "version" : "1.6.1",
+  "name" : "lineitem_model",
+  "owner" : "ADMIN",
+  "description" : "",
+  "fact_table" : "TPCH_FLAT_ORC_2.V_LINEITEM",
+  "lookups" : [ {
+    "table" : "TPCH_FLAT_ORC_2.V_ORDERS",
+    "kind" : "FACT",
+    "alias" : "V_ORDERS",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "V_ORDERS.O_ORDERKEY" ],
+      "foreign_key" : [ "V_LINEITEM.L_ORDERKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.SUPPLIER",
+    "kind" : "LOOKUP",
+    "alias" : "SUPPLIER",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "SUPPLIER.S_SUPPKEY" ],
+      "foreign_key" : [ "V_LINEITEM.L_SUPPKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.PART",
+    "kind" : "FACT",
+    "alias" : "PART",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "PART.P_PARTKEY" ],
+      "foreign_key" : [ "V_LINEITEM.L_PARTKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.V_PARTSUPP",
+    "kind" : "FACT",
+    "alias" : "V_PARTSUPP",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "V_PARTSUPP.PS_PARTKEY", "V_PARTSUPP.PS_SUPPKEY" ],
+      "foreign_key" : [ "V_LINEITEM.L_PARTKEY", "V_LINEITEM.L_SUPPKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.CUSTOMER",
+    "kind" : "FACT",
+    "alias" : "CUSTOMER",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "CUSTOMER.C_CUSTKEY" ],
+      "foreign_key" : [ "V_ORDERS.O_CUSTKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.NATION",
+    "kind" : "LOOKUP",
+    "alias" : "S_NATION",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "S_NATION.N_NATIONKEY" ],
+      "foreign_key" : [ "SUPPLIER.S_NATIONKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.NATION",
+    "kind" : "LOOKUP",
+    "alias" : "C_NATION",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "C_NATION.N_NATIONKEY" ],
+      "foreign_key" : [ "CUSTOMER.C_NATIONKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.REGION",
+    "kind" : "LOOKUP",
+    "alias" : "S_REGION",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "S_REGION.R_REGIONKEY" ],
+      "foreign_key" : [ "S_NATION.N_REGIONKEY" ]
+    }
+  }, {
+    "table" : "TPCH_FLAT_ORC_2.REGION",
+    "kind" : "LOOKUP",
+    "alias" : "C_REGION",
+    "join" : {
+      "type" : "inner",
+      "primary_key" : [ "C_REGION.R_REGIONKEY" ],
+      "foreign_key" : [ "C_NATION.N_REGIONKEY" ]
+    }
+  } ],
+  "dimensions" : [ {
+    "table" : "V_LINEITEM",
+    "columns" : [ "L_ORDERKEY", "L_PARTKEY", "L_LINENUMBER", "L_TAX", "L_RETURNFLAG", "L_LINESTATUS", "L_SHIPDATE", "L_COMMITDATE", "L_RECEIPTDATE", "L_SHIPINSTRUCT", "L_SHIPMODE", "L_COMMENT", "L_SHIPYEAR", "L_RECEIPTDELAYED", "L_SHIPDELAYED", "L_SUPPKEY", "L_DISCOUNT" ]
+  }, {
+    "table" : "V_ORDERS",
+    "columns" : [ "O_ORDERKEY", "O_CUSTKEY", "O_ORDERSTATUS", "O_ORDERDATE", "O_ORDERPRIORITY", "O_CLERK", "O_SHIPPRIORITY", "O_COMMENT", "O_ORDERYEAR" ]
+  }, {
+    "table" : "SUPPLIER",
+    "columns" : [ "S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_NATIONKEY", "S_PHONE", "S_ACCTBAL", "S_COMMENT" ]
+  }, {
+    "table" : "PART",
+    "columns" : [ "P_PARTKEY", "P_NAME", "P_MFGR", "P_BRAND", "P_TYPE", "P_SIZE", "P_CONTAINER", "P_RETAILPRICE", "P_COMMENT" ]
+  }, {
+    "table" : "V_PARTSUPP",
+    "columns" : [ "PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY", "PS_SUPPLYCOST", "PS_COMMENT", "PS_PARTVALUE" ]
+  }, {
+    "table" : "CUSTOMER",
+    "columns" : [ "C_CUSTKEY", "C_NAME", "C_ADDRESS", "C_NATIONKEY", "C_PHONE", "C_ACCTBAL", "C_MKTSEGMENT", "C_COMMENT" ]
+  }, {
+    "table" : "S_NATION",
+    "columns" : [ "N_NATIONKEY", "N_NAME", "N_REGIONKEY", "N_COMMENT" ]
+  }, {
+    "table" : "C_NATION",
+    "columns" : [ "N_NAME", "N_REGIONKEY", "N_COMMENT", "N_NATIONKEY" ]
+  }, {
+    "table" : "S_REGION",
+    "columns" : [ "R_REGIONKEY", "R_NAME", "R_COMMENT" ]
+  }, {
+    "table" : "C_REGION",
+    "columns" : [ "R_REGIONKEY", "R_NAME", "R_COMMENT" ]
+  } ],
+  "metrics" : [ "V_LINEITEM.L_EXTENDEDPRICE", "V_LINEITEM.L_SALEPRICE", "V_LINEITEM.L_TAXPRICE", "V_LINEITEM.L_SUPPLYCOST", "V_LINEITEM.L_QUANTITY", "V_ORDERS.O_TOTALPRICE" ],
+  "filter_condition" : "",
+  "partition_desc" : {
+    "partition_date_column" : "V_LINEITEM.L_SHIPDATE",
+    "partition_time_column" : null,
+    "partition_date_start" : 0,
+    "partition_date_format" : "yyyy-MM-dd",
+    "partition_time_format" : "HH:mm:ss",
+    "partition_type" : "APPEND",
+    "partition_condition_builder" : "org.apache.kylin.metadata.model.PartitionDesc$DefaultPartitionConditionBuilder"
+  },
+  "capacity" : "MEDIUM"
+}

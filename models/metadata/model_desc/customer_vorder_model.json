@@ -1,0 +1,38 @@
+{
+  "uuid" : "96bae733-524b-434c-bf33-70ddf6389cde",
+  "last_modified" : 1482830117549,
+  "version" : "1.6.1",
+  "name" : "customer_vorder_model",
+  "owner" : "ADMIN",
+  "description" : "",
+  "fact_table" : "TPCH_FLAT_ORC_2.CUSTOMER",
+  "lookups" : [ {
+    "table" : "TPCH_FLAT_ORC_2.V_ORDERS",
+    "kind" : "FACT",
+    "alias" : "V_ORDERS",
+    "join" : {
+      "type" : "left",
+      "primary_key" : [ "V_ORDERS.O_CUSTKEY" ],
+      "foreign_key" : [ "CUSTOMER.C_CUSTKEY" ]
+    }
+  } ],
+  "dimensions" : [ {
+    "table" : "CUSTOMER",
+    "columns" : [ "C_NAME", "C_ADDRESS", "C_NATIONKEY", "C_PHONE", "C_MKTSEGMENT", "C_CUSTKEY", "C_COMMENT", "C_ACCTBAL" ]
+  }, {
+    "table" : "V_ORDERS",
+    "columns" : [ "O_CUSTKEY", "O_ORDERSTATUS", "O_TOTALPRICE", "O_ORDERDATE", "O_ORDERPRIORITY", "O_CLERK", "O_SHIPPRIORITY", "O_COMMENT", "O_ORDERYEAR", "O_ORDERKEY" ]
+  } ],
+  "metrics" : [ ],
+  "filter_condition" : "",
+  "partition_desc" : {
+    "partition_date_column" : null,
+    "partition_time_column" : null,
+    "partition_date_start" : 0,
+    "partition_date_format" : "yyyy-MM-dd",
+    "partition_time_format" : "HH:mm:ss",
+    "partition_type" : "APPEND",
+    "partition_condition_builder" : "org.apache.kylin.metadata.model.PartitionDesc$DefaultPartitionConditionBuilder"
+  },
+  "capacity" : "MEDIUM"
+}

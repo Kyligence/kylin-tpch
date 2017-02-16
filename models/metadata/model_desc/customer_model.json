@@ -1,0 +1,26 @@
+{
+  "uuid" : "7686f51c-5543-4d31-b087-fc043266b5ff",
+  "last_modified" : 1482235005223,
+  "version" : "1.6.1",
+  "name" : "customer_model",
+  "owner" : "ADMIN",
+  "description" : "",
+  "fact_table" : "TPCH_FLAT_ORC_2.CUSTOMER",
+  "lookups" : [ ],
+  "dimensions" : [ {
+    "table" : "CUSTOMER",
+    "columns" : [ "C_CUSTKEY", "C_NAME", "C_ADDRESS", "C_NATIONKEY", "C_PHONE", "C_MKTSEGMENT", "C_COMMENT" ]
+  } ],
+  "metrics" : [ "CUSTOMER.C_ACCTBAL" ],
+  "filter_condition" : "",
+  "partition_desc" : {
+    "partition_date_column" : null,
+    "partition_time_column" : null,
+    "partition_date_start" : 0,
+    "partition_date_format" : "yyyy-MM-dd",
+    "partition_time_format" : "HH:mm:ss",
+    "partition_type" : "APPEND",
+    "partition_condition_builder" : "org.apache.kylin.metadata.model.PartitionDesc$DefaultPartitionConditionBuilder"
+  },
+  "capacity" : "MEDIUM"
+}

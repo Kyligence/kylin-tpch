@@ -1,0 +1,110 @@
+{
+  "uuid" : "c7716bf3-6447-4cd0-89d8-b66df3e9ac01",
+  "last_modified" : 1484303272529,
+  "version" : "2.0.0",
+  "name" : "customer_vorder_cube",
+  "model_name" : "customer_vorder_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "C_CUSTKEY",
+    "table" : "CUSTOMER",
+    "column" : "C_CUSTKEY",
+    "derived" : null
+  }, {
+    "name" : "C_PHONE",
+    "table" : "CUSTOMER",
+    "column" : "C_PHONE",
+    "derived" : null
+  }, {
+    "name" : "C_ACCTBAL",
+    "table" : "CUSTOMER",
+    "column" : "C_ACCTBAL",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERKEY",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERKEY",
+    "derived" : null
+  }, {
+    "name" : "O_COMMENT",
+    "table" : "V_ORDERS",
+    "column" : "O_COMMENT",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "ORDERKEY_COUNT_DISTINCT",
+    "function" : {
+      "expression" : "COUNT_DISTINCT",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_ORDERS.O_ORDERKEY"
+      },
+      "returntype" : "hllc(10)"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_ORDERS.O_COMMENT",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_CUSTKEY",
+      "encoding" : "integer:4",
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_ACCTBAL",
+      "encoding" : "dict",
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_PHONE",
+      "encoding" : "fixed_length:15",
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_" ]
+      } ]
+    }, {
+      "name" : "F2",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "ORDERKEY_COUNT_DISTINCT" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_PHONE", "CUSTOMER.C_ACCTBAL", "V_ORDERS.O_ORDERKEY", "V_ORDERS.O_COMMENT" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_ACCTBAL" ],
+      "joint_dims" : [ [ "V_ORDERS.O_ORDERKEY", "V_ORDERS.O_COMMENT" ] ]
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "retention_range" : 0,
+  "engine_type" : 2,
+  "storage_type" : 2,
+  "override_kylin_properties" : { }
+}
