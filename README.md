@@ -89,7 +89,7 @@ This benchmark was tested in two environments. One enviroment is HDP sandbox, an
 
 | Cube Build Stats     | HDP Sandbox (SF=2)    | CDH 4-Node Cluster (SF=10) |
 | -------------------- | --------------------- | -------------------------- |
-| lineitem_cube        | 18.1 GB, 125 mins * 7 | 85.8 GB, 54.69 mins * 7    |
+| lineitem_cube        | 20.1 GB, 125 mins * 7 | 85.8 GB, 54.69 mins * 7    |
 | partsupp_cube        | 1.6 GB, 27.02 mins    | 8.3 GB, 18.48 mins         |
 | customer_vorder_cube | 283 MB, 16.88 mins    | 1.39 GB, 13.7 mins         |
 | customer_cube        | 7 MB, 3.95 mins       | 36.98 MB, 3.97 mins        |
