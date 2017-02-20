@@ -2,6 +2,8 @@
 
 This is a derived work from https://github.com/hortonworks/hive-testbench
 
+This benchmark requires Apache Kylin 2.0 or later.
+
 1. Prepare TPCH test data
 
    - Follow [the steps](https://github.com/hortonworks/hive-testbench) to setup test data in Hive.
@@ -57,7 +59,7 @@ This is a derived work from https://github.com/hortonworks/hive-testbench
    -  Verify by counting `v_lineitem` in Kylin. The row count must match the Hive table `lineitem`.
 
       ```sql
-      select count(*) from v_lineitem
+       select count(*) from v_lineitem
       ```
 
 4. Run TPCH queries
@@ -104,20 +106,20 @@ This benchmark was tested in two environments. One enviroment is HDP sandbox, an
 | query06             | 0.34 sec            | 8.91 sec               | 0.39 sec             | 23.29 sec              |
 | query07             | 0.17 sec            | 35.23 sec              | 0.24 sec             | 245.52 sec             |
 | query08             | 7.42 sec            | 19.4 sec               | 8.82 sec             | 2248.5 sec             |
-| query09             | 16.4 sec            | 30.75 sec              | 34.8 sec             | 19869 sec              |
+| query09             | 10.4 sec            | 30.75 sec              | 34.8 sec             | 19869 sec              |
 | query10             | 21.1 sec            | 19.03 sec              | 11.91 sec            | 120.61 sec             |
 | query11             | 3.42 sec            | 15.87 sec              | 2.09 sec             | 123.3 sec              |
-| query12             | 17.89 sec           | 12.64 sec              | 5.73 sec             | 96.34 sec              |
-| query13             | 53.69 sec           | 24.61 sec              | 104.77 sec           | 135.64 sec             |
+| query12             | 7.66 sec            | 12.64 sec              | 5.73 sec             | 96.34 sec              |
+| query13             | 20.44 sec           | 24.61 sec              | 104.77 sec           | 135.64 sec             |
 | query14             | 1.1 sec             | 4.54 sec               | 1.56 sec             | 54.42 sec              |
 | query15             | 1.96 sec            | 13.06 sec              | 17.02 sec            | 124.29 sec             |
-| query16             | 10.3 sec            | 17.36 sec              | 10.16 sec            | 144.34 sec             |
-| query17             | 11.28 sec           | 25.61 sec              | 10.19 sec            | 183.56 sec             |
-| query18             | 24.04 sec           | 65.32 sec              | 74.88 sec            | 231.9 sec              |
+| query16             | 3.69 sec            | 17.36 sec              | 10.16 sec            | 144.34 sec             |
+| query17             | 5.49 sec            | 25.61 sec              | 10.19 sec            | 183.56 sec             |
+| query18             | 22.43 sec           | 65.32 sec              | 74.88 sec            | 231.9 sec              |
 | query19             | 21.9 sec            | 22.5 sec               | 138.81 sec           | 186.87 sec             |
 | query20             | 6.46 sec            | 16.21 sec              | 42.02 sec            | 229.01 sec             |
-| query21             | 139.33 sec          | 84.6 sec               | 136.3 sec            | 276.59 sec             |
-| query22             | 100.05 sec          | 21.79 sec              | 102.81 sec           | 154.48 sec             |
+| query21             | 58.6 sec            | 84.6 sec               | 136.3 sec            | 276.59 sec             |
+| query22             | 23.21 sec           | 21.79 sec              | 102.81 sec           | 154.48 sec             |
 
 
 **HDP Sandbox Configuration**
