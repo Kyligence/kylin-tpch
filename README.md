@@ -2,12 +2,12 @@
 
 This is a derived work from https://github.com/hortonworks/hive-testbench
 
-This benchmark requires Apache Kylin 2.0 or later.
+This benchmark requires [Apache Kylin 2.0](http://kylin.apache.org/download/) or later. The goal at this stage is functionality rather than performance. Enabling all TPC-H queries is a new milestone of Apache Kylin's SQL capability.
 
 1. Prepare TPCH test data
 
    - Follow [the steps](https://github.com/hortonworks/hive-testbench) to setup test data in Hive.
-     - For example, generate minimal data with ScaleFactor=2
+     - For example, generate a minimal data with ScaleFactor=2
        ```sh
        git clone https://github.com/hortonworks/hive-testbench.git
        cd hive-testbench/
@@ -15,7 +15,7 @@ This benchmark requires Apache Kylin 2.0 or later.
        ./tpch-setup.sh 2
        ```
 
-     - Verify TPCH tables existed in hive
+     - Verify the TPCH tables existed in hive
        ```sh
        echo "use tpch_flat_orc_2; show tables;" | hive
        ```
@@ -42,7 +42,7 @@ This benchmark requires Apache Kylin 2.0 or later.
 
    - The script also creates a few simple views on top of the original TPCH tables to allow Kylin pre-calculate some complex measures. The resulted E-R model topology is identical to the original TPCH model.
 
-3. Build Kylin Cube
+3. Build Kylin cube
 
    -  In the Kylin web, click "System->Reload Metadata" to refresh the newly imported TPCH model.
 
@@ -59,15 +59,15 @@ This benchmark requires Apache Kylin 2.0 or later.
    -  Verify by counting `v_lineitem` in Kylin. The row count must match the Hive table `lineitem`.
 
       ```sql
-       select count(*) from v_lineitem
+        select count(*) from v_lineitem
       ```
 
 4. Run TPCH queries
 
-   - Find the TPCH queries under the `query` folder. Run them via the Kylin web, or Kylin REST API / JDBC / ODBC interfaces.
-   - The queries are slightly re-written to leverage the views created in Step 2 and work around limitations like [KYLIN-2341](https://issues.apache.org/jira/browse/KYLIN-2341).
-   - The original queries (from hive-testbench) can be found at `queries/original-queries`. The original and the re-written queries should give the same result in Hive and Kylin respectively.
-   - There is a tool to run all queries one by one. It can be found at `tools/query-tool.py`. For kylin, it prints query duration. For hive, it prints query duration and query results.
+   - Find the TPCH queries under the `query` folder. Run them via the Kylin web, or Kylin REST API / JDBC / ODBC.
+   - The queries are slightly adapted to leverage the views created in Step 2 and work around limitations like [KYLIN-2341](https://issues.apache.org/jira/browse/KYLIN-2341).
+   - The original queries (from hive-testbench) can be found at `queries/original-queries`. The original and the adapted queries should give the same result in Hive and Kylin respectively.
+   - There is a tool to run all queries one by one. It can be found at `tools/query-tool.py`. For Kylin, it prints query duration. For Hive, it prints query duration and query results.
      * Install dependencies
      ```sh
      pip install requests
@@ -85,7 +85,11 @@ This benchmark requires Apache Kylin 2.0 or later.
 
 ## Experiment Result
 
-This benchmark was tested in two environments. One enviroment is HDP sandbox, another is a 4-node CDH cluster. The query speed is compared with Hive for reference.
+This benchmark was tested in two environments. One enviroment is HDP sandbox, another is a 4-node CDH cluster. Each query was run multiple times and the final stable response time get recorded for both Kylin and Hive.
+
+And again, the goal at this stage is SQL capability rather than performance. No special performance tuning was done to both Kylin and Hive.
+
+Btw, [KyBot](http://kybot.io/) is a great tool if you want to analyze Kylin cube and query performance. Upload a Kylin diagnosis pack to this online service and it can show you why a query runs slow or why a cube takes long to build. [KyBot](http://kybot.io/) is free for trial.
 
 | Cube Build Stats     | HDP Sandbox (SF=2)    | CDH 4-Node Cluster (SF=10) |
 | -------------------- | --------------------- | -------------------------- |
@@ -121,6 +125,7 @@ This benchmark was tested in two environments. One enviroment is HDP sandbox, an
 | query21             | 58.6 sec            | 84.6 sec               | 136.3 sec            | 276.59 sec             |
 | query22             | 23.21 sec           | 21.79 sec              | 102.81 sec           | 154.48 sec             |
 
+------
 
 **HDP Sandbox Configuration**
 
