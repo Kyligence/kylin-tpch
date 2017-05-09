@@ -14,6 +14,7 @@ cus_tmp as (
     from
         customer left join v_orders on c_custkey = o_custkey
     where o_orderkey is null
+    group by c_custkey
 )
 
 select
