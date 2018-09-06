@@ -137,7 +137,7 @@
   "rowkey" : {
     "rowkey_columns" : [ {
       "column" : "V_PARTSUPP.PS_PARTKEY",
-      "encoding" : "dict",
+      "encoding" : "integer:8",
       "isShardBy" : false
     }, {
       "column" : "V_PARTSUPP.PS_AVAILQTY",
