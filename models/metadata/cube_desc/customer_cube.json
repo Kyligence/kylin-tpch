@@ -40,7 +40,7 @@
         "type" : "column",
         "value" : "CUSTOMER.C_ACCTBAL"
       },
-      "returntype" : "decimal"
+      "returntype" : "double"
     }
   } ],
   "dictionaries" : [ ],
