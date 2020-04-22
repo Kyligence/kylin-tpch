@@ -120,7 +120,7 @@
         "type" : "column",
         "value" : "V_PARTSUPP.PS_PARTVALUE"
       },
-      "returntype" : "decimal"
+      "returntype" : "double"
     }
   }, {
     "name" : "SUPPKEY_COUNT_DISTINCT",
