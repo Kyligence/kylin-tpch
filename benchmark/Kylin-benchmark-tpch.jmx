@@ -1,0 +1,1197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.4.1">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Kylin-benchmark-tpch" enabled="true">
+      <stringProp name="TestPlan.comments"></stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="用户定义的变量" enabled="true">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+      <JDBCDataSource guiclass="TestBeanGUI" testclass="JDBCDataSource" testname="Kylin JDBC Connection Configuration" enabled="true">
+        <boolProp name="autocommit">true</boolProp>
+        <stringProp name="checkQuery">select 1</stringProp>
+        <stringProp name="connectionAge">5000</stringProp>
+        <stringProp name="dataSource">kylin-jdbc</stringProp>
+        <stringProp name="dbUrl">jdbc:kylin://${host}:${port}/project_name</stringProp>
+        <stringProp name="driver">org.apache.kylin.jdbc.Driver</stringProp>
+        <stringProp name="initQuery">select 1</stringProp>
+        <boolProp name="keepAlive">true</boolProp>
+        <stringProp name="password">KYLIN</stringProp>
+        <stringProp name="poolMax">500</stringProp>
+        <stringProp name="timeout">10000</stringProp>
+        <stringProp name="transactionIsolation">DEFAULT</stringProp>
+        <stringProp name="trimInterval">60000</stringProp>
+        <stringProp name="username">ADMIN</stringProp>
+        <boolProp name="preinit">false</boolProp>
+        <stringProp name="connectionProperties"></stringProp>
+      </JDBCDataSource>
+      <hashTree/>
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="察看结果树" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename">/Users/yaqian.zhang/Documents/work/benchmark/NewFolder/result_查看结果树.csv</stringProp>
+      </ResultCollector>
+      <hashTree/>
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="汇总报告" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename">/Users/yaqian.zhang/Documents/work/benchmark/NewFolder/result_1</stringProp>
+      </ResultCollector>
+      <hashTree/>
+      <ResultCollector guiclass="StatGraphVisualizer" testclass="ResultCollector" testname="汇总图" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename">/Users/yaqian.zhang/Documents/work/benchmark/NewFolder/result_1.csv</stringProp>
+      </ResultCollector>
+      <hashTree/>
+      <ResultCollector guiclass="GraphVisualizer" testclass="ResultCollector" testname="图形结果" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+      <ResultCollector guiclass="RespTimeGraphVisualizer" testclass="ResultCollector" testname="响应时间图" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+        <stringProp name="RespTimeGraph.xaxistimeformat">HH</stringProp>
+        <stringProp name="RespTimeGraph.interval">100000</stringProp>
+      </ResultCollector>
+      <hashTree/>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="tpch query Q01~Q22" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">stopthread</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <intProp name="LoopController.loops">-1</intProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">3</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">1200</stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q01" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Sum quantity/price/discount from lineitems, filter by date, group by returnflag and linestatus.
+
+select
+    l_returnflag,
+    l_linestatus,
+    sum(l_quantity) as sum_qty,
+    sum(l_extendedprice) as sum_base_price,
+    sum(l_saleprice) as sum_disc_price,
+    sum(l_saleprice) + sum(l_taxprice) as sum_charge,
+    avg(l_quantity) as avg_qty,
+    avg(l_extendedprice) as avg_price,
+    avg(l_discount) as avg_disc,
+    count(*) as count_order
+from
+    v_lineitem
+where
+    l_shipdate &lt;= &apos;1998-09-16&apos;
+group by
+    l_returnflag,
+    l_linestatus
+order by
+    l_returnflag,
+    l_linestatus;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q02" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Get min ps_supplycost from v_partsupp. And query some details filter by p_size/p_type/r_name.
+
+with q2_min_ps_supplycost as (
+	select
+		p_partkey as min_p_partkey,
+		min(ps_supplycost) as min_ps_supplycost
+	from
+		v_partsupp
+		inner join part on p_partkey = ps_partkey
+		inner join supplier on s_suppkey = ps_suppkey
+		inner join nation on s_nationkey = n_nationkey
+		inner join region on n_regionkey = r_regionkey
+	where
+		r_name = &apos;EUROPE&apos;
+	group by
+		p_partkey
+)
+select
+	s_acctbal,
+	s_name,
+	n_name,
+	p_partkey,
+	p_mfgr,
+	s_address,
+	s_phone,
+	s_comment
+from
+	v_partsupp
+	inner join part on p_partkey = ps_partkey
+	inner join supplier on s_suppkey = ps_suppkey
+	inner join nation on s_nationkey = n_nationkey
+	inner join region on n_regionkey = r_regionkey
+	inner join q2_min_ps_supplycost on ps_supplycost = min_ps_supplycost and p_partkey = min_p_partkey
+where
+	p_size = 37
+	and p_type like &apos;%COPPER&apos;
+	and r_name = &apos;EUROPE&apos;	
+order by
+	s_acctbal desc,
+	n_name,
+	s_name,
+	p_partkey
+limit 100;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q03" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Sum revenue from lineitems, filter by mktsegment and time condition.
+
+select
+    l_orderkey,
+    sum(l_saleprice) as revenue,
+    o_orderdate,
+    o_shippriority
+from
+    v_lineitem
+    inner join v_orders on l_orderkey = o_orderkey
+    inner join customer on c_custkey = o_custkey
+where
+    c_mktsegment = &apos;BUILDING&apos;
+    and o_orderdate &lt; &apos;1995-03-22&apos;
+    and l_shipdate &gt; &apos;1995-03-22&apos;
+group by
+    l_orderkey,
+    o_orderdate,
+    o_shippriority
+order by
+    revenue desc,
+    o_orderdate
+limit 10;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q04" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Count number of delayed orders, filter by date range, group by orderpriority
+
+select
+    o_orderpriority,
+    count(*) as order_count
+from
+    (
+        select
+            l_orderkey,
+            o_orderpriority
+        from
+            v_lineitem
+            inner join v_orders on l_orderkey = o_orderkey
+        where
+            o_orderdate &gt;= &apos;1996-05-01&apos;
+            and o_orderdate &lt; &apos;1996-08-01&apos;
+            and l_receiptdelayed = 1
+        group by
+            l_orderkey,
+            o_orderpriority
+    ) t
+group by
+    t.o_orderpriority
+order by
+    t.o_orderpriority;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q05" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Sum revenue, filter by date range, filter by region
+
+select
+    sn.n_name,
+    sum(l_saleprice) as revenue
+from
+    v_lineitem
+    inner join v_orders on l_orderkey = o_orderkey
+    inner join customer on o_custkey = c_custkey
+    inner join nation cn on c_nationkey = cn.n_nationkey
+    inner join supplier on l_suppkey = s_suppkey
+    inner join nation sn on s_nationkey = sn.n_nationkey
+    inner join region on sn.n_regionkey = r_regionkey
+where
+    r_name = &apos;AFRICA&apos;
+    and cn.n_name = sn.n_name
+    and o_orderdate &gt;= &apos;1993-01-01&apos;
+    and o_orderdate &lt; &apos;1994-01-01&apos;
+group by
+    sn.n_name
+order by
+    revenue desc;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q06" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Sum discount revenue, filter by discount, quantity and time range
+
+select
+    sum(l_extendedprice) - sum(l_saleprice) as revenue
+from
+    v_lineitem
+where
+    l_shipdate &gt;= &apos;1993-01-01&apos;
+    and l_shipdate &lt; &apos;1994-01-01&apos;
+    and l_discount between 0.06 - 0.01 and 0.06 + 0.01
+    and l_quantity &lt; 25;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q07" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">-- Sum revenue from lineitem, filter by shipdate range, nation name, group by supplier nation, customer nation and year.
+
+select
+	supp_nation,
+	cust_nation,
+	l_year,
+	sum(volume) as revenue
+from
+	(
+		select
+			n1.n_name as supp_nation,
+			n2.n_name as cust_nation,
+			l_shipyear as l_year,
+			l_saleprice as volume
+		from
+			v_lineitem 
+			inner join supplier on s_suppkey = l_suppkey
+			inner join v_orders on l_orderkey = o_orderkey
+			inner join customer on o_custkey = c_custkey
+			inner join nation n1 on s_nationkey = n1.n_nationkey
+			inner join nation n2 on c_nationkey = n2.n_nationkey
+		where
+			(
+				(n1.n_name = &apos;KENYA&apos; and n2.n_name = &apos;PERU&apos;)
+				or (n1.n_name = &apos;PERU&apos; and n2.n_name = &apos;KENYA&apos;)
+			)
+			and l_shipdate between &apos;1995-01-01&apos; and &apos;1996-12-31&apos;
+	) as shipping
+group by
+	supp_nation,
+	cust_nation,
+	l_year
+order by
+	supp_nation,
+	cust_nation,
+	l_year;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q08" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">-- Calculate mkt share percent(sum saleprice) of some nation from lineitem, filter by region name, order date range, nation name
+-- group by order year
+
+with all_nations as (
+    select
+			o_orderyear as o_year,
+			l_saleprice as volume,
+			n2.n_name as nation
+		from
+		    v_lineitem
+		    inner join part on l_partkey = p_partkey
+		    inner join supplier on l_suppkey = s_suppkey
+			inner join v_orders on l_orderkey = o_orderkey
+			inner join customer on o_custkey = c_custkey
+		    inner join nation n1 on c_nationkey = n1.n_nationkey
+		    inner join nation n2 on s_nationkey = n2.n_nationkey
+		    inner join region on n1.n_regionkey = r_regionkey
+		where
+			r_name = &apos;AMERICA&apos;
+			and o_orderdate between &apos;1995-01-01&apos; and &apos;1996-12-31&apos;
+			and p_type = &apos;ECONOMY BURNISHED NICKEL&apos;
+),
+peru as (
+    select o_year, sum(volume) as peru_volume from all_nations where nation = &apos;PERU&apos; group by o_year
+),
+all_data as (
+    select o_year, sum(volume) as all_volume from all_nations group by o_year
+)
+select peru.o_year, peru_volume / all_volume as mkt_share from peru inner join all_data on peru.o_year = all_data.o_year;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q09" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Sum volume and cost, Calculate profit, filter by part name, group by nation name and order year
+
+select
+	nation,
+	o_year,
+	sum(volume) - sum(cost) as sum_profit
+from
+	(
+		select
+			n_name as nation,
+			o_orderyear as o_year,
+			l_saleprice as volume,
+			l_supplycost as cost
+		from
+			v_lineitem
+			inner join part on l_partkey = p_partkey
+			inner join supplier on l_suppkey = s_suppkey
+			inner join v_partsupp on l_suppkey = ps_suppkey and l_partkey = ps_partkey
+			inner join v_orders on l_orderkey = o_orderkey
+			inner join nation on s_nationkey = n_nationkey
+		where
+			p_name like &apos;%plum%&apos;
+	) as profit
+group by
+	nation,
+	o_year
+order by
+	nation,
+	o_year desc;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q10" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Sum revenue, filter by order date range and return flag, group by customer key, name, account balance,
+--  phone, address, comment and nation name.
+
+select
+	c_custkey,
+	c_name,
+	sum(l_saleprice) as revenue,
+	c_acctbal,
+	n_name,
+	c_address,
+	c_phone,
+	c_comment
+from
+    v_lineitem
+    inner join v_orders on l_orderkey = o_orderkey
+	inner join customer on c_custkey = o_custkey
+    inner join nation on c_nationkey = n_nationkey
+where
+	o_orderdate &gt;= &apos;1993-07-01&apos;
+	and o_orderdate &lt; &apos;1993-10-01&apos;
+	and l_returnflag = &apos;R&apos;
+group by
+	c_custkey,
+	c_name,
+	c_acctbal,
+	c_phone,
+	n_name,
+	c_address,
+	c_comment
+order by
+	revenue desc
+limit 20;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q11" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">-- This query finds the most important subset of suppliers&apos; stock in a given nation.
+-- Sum part value from partsupp, filter by nation name, part_value, group by partkey
+
+with q11_part_tmp_cached as (
+	select
+		ps_partkey,
+		sum(ps_partvalue) as part_value
+	from
+		v_partsupp
+		inner join supplier on ps_suppkey = s_suppkey
+		inner join nation on s_nationkey = n_nationkey
+	where
+		n_name = &apos;GERMANY&apos;
+	group by ps_partkey
+),
+q11_sum_tmp_cached as (
+	select
+		sum(part_value) as total_value
+	from
+		q11_part_tmp_cached
+)
+
+select
+	ps_partkey, 
+	part_value
+from (
+	select
+		ps_partkey,
+		part_value,
+		total_value
+	from
+		q11_part_tmp_cached, q11_sum_tmp_cached
+) a
+where
+	part_value &gt; total_value * 0.0001
+order by
+	part_value desc;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q12" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">-- The Query counts, by ship mode, for lineitems actually received by customers in a given year, 
+-- the number of lineitems belonging to orders for which the l_receiptdate exceeds the l_commitdate for
+-- two different specified ship modes. Only lineitems that were actually shipped before the l_commitdate are con- sidered. 
+-- The late lineitems are partitioned into two groups, those with priority URGENT or HIGH, 
+-- and those with a priority other than URGENT or HIGH.
+
+with in_scope_data as(
+	select
+		l_shipmode,
+		o_orderpriority
+	from
+		v_lineitem inner join v_orders on l_orderkey = o_orderkey
+	where
+		l_shipmode in (&apos;REG AIR&apos;, &apos;MAIL&apos;)
+		and l_receiptdelayed = 1
+		and l_shipdelayed = 0
+		and l_receiptdate &gt;= &apos;1995-01-01&apos;
+		and l_receiptdate &lt; &apos;1996-01-01&apos;
+), all_l_shipmode as(
+	select
+		distinct l_shipmode
+	from
+		in_scope_data
+), high_line as(
+	select
+		l_shipmode,
+		count(*) as high_line_count
+	from
+		in_scope_data
+	where
+		o_orderpriority = &apos;1-URGENT&apos; or o_orderpriority = &apos;2-HIGH&apos;
+	group by l_shipmode
+), low_line as(
+	select
+		l_shipmode,
+		count(*) as low_line_count
+	from
+		in_scope_data
+	where
+		o_orderpriority &lt;&gt; &apos;1-URGENT&apos; and o_orderpriority &lt;&gt; &apos;2-HIGH&apos;
+	group by l_shipmode
+)
+select
+	al.l_shipmode, hl.high_line_count, ll.low_line_count
+from
+	all_l_shipmode al
+	left join high_line hl on al.l_shipmode = hl.l_shipmode
+	left join low_line ll on al.l_shipmode = ll.l_shipmode
+order by
+	al.l_shipmode;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q13" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Count number of orders each customer has, then group by number of orders and count number of customers.
+-- 
+--  The result is not exactly the same as hive due to
+--  1. Condition o_comment not like &apos;%unusual%accounts%&apos; is moved from &quot;left join on&quot; to &quot;where&quot;.
+--     Causes customers having 0 orders are filtered out and not reported.
+--  2. HLL count distinct yields approximate result.
+
+select
+	c_count,
+	count(*) as custdist
+from
+	(
+		select
+			c_custkey,
+			count(distinct o_orderkey) as c_count
+		from
+			customer left outer join v_orders on
+				c_custkey = o_custkey
+		where o_comment not like &apos;%unusual%accounts%&apos;
+		group by
+			c_custkey
+	) c_orders
+group by
+	c_count
+order by
+	custdist desc,
+	c_count desc;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q14" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">-- This query monitors the market response to a promotion such as TV advertisements or a special campaign.
+-- Sum saleprice from lineitem, filter by shipdate
+
+with total as (
+    select
+	    sum(l_saleprice) as total_saleprice
+    from
+	    v_lineitem 
+	    inner join part on l_partkey = p_partkey
+    where
+        l_shipdate &gt;= &apos;1995-08-01&apos;
+	    and l_shipdate &lt; &apos;1995-09-01&apos;
+),
+promo as (
+    select
+	    sum(l_saleprice) as promo_saleprice
+    from
+	    v_lineitem 
+	    inner join part on l_partkey = p_partkey
+    where
+        l_shipdate &gt;= &apos;1995-08-01&apos;
+	    and l_shipdate &lt; &apos;1995-09-01&apos;
+	    and p_type like &apos;PROMO%&apos;
+)
+
+select 100.00 * promo_saleprice / total_saleprice from promo,total;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q15" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Find the most profitable supplier within given date range.
+
+with revenue_cached as
+(
+    select
+        s_suppkey,
+        s_name,
+        s_address,
+        s_phone,
+        sum(l_saleprice) as total_revenue
+    from
+        v_lineitem
+        inner join supplier on s_suppkey=l_suppkey
+    where
+        l_shipdate &gt;= &apos;1996-01-01&apos;
+        and l_shipdate &lt; &apos;1996-04-01&apos;
+    group by s_suppkey,s_name,s_address,s_phone
+),
+max_revenue_cached as
+(
+    select
+        max(total_revenue) as max_revenue
+    from
+        revenue_cached
+)
+
+select
+    s_suppkey,
+    s_name,
+    s_address,
+    s_phone,
+    total_revenue
+from
+    revenue_cached
+    inner join max_revenue_cached on total_revenue = max_revenue
+order by s_suppkey;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q16" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">-- This query finds out how many suppliers can supply parts with given attributes.
+-- It might be used, for example, to determine whether there is a sufficient number of suppliers for heavily ordered parts.
+-- 
+-- Count distinct supplier from partsupp, filter by supplier comment, part brand/type/size, group by part brand/type/size 
+--
+-- Hive result is incorrect on HDP 2.4 sandbox.
+
+select
+	p_brand,
+	p_type,
+	p_size,
+	count(distinct ps_suppkey) as supplier_cnt
+from
+	v_partsupp
+	inner join part on p_partkey = ps_partkey
+	inner join (
+		select
+			s_suppkey
+		from
+			supplier
+		where
+			s_comment not like &apos;%Customer%Complaints%&apos;
+	) on ps_suppkey = s_suppkey
+where
+    p_brand &lt;&gt; &apos;Brand#34&apos;
+	and p_type not like &apos;ECONOMY BRUSHED%&apos;
+	and p_size in (22, 14, 27, 49, 21, 33, 35, 28)
+group by
+    p_brand,
+	p_type,
+	p_size
+order by
+	supplier_cnt desc,
+	p_brand,
+	p_type,
+	p_size;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q17" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Filter by some part, filter by l_quantity &lt; t_avg_quantity, sum up price
+
+with q17_avg as (
+    select
+        l_partkey,
+        0.2 * avg(l_quantity) as t_avg_quantity
+    from
+        v_lineitem
+        inner join part on l_partkey = p_partkey
+    where
+        p_brand = &apos;Brand#23&apos;
+        and p_container = &apos;MED BOX&apos;
+    group by
+        l_partkey
+)
+
+select cast(sum(l_extendedprice) / 7.0 as decimal(32,2)) as avg_yearly
+from
+    v_lineitem
+    inner join part on l_partkey = p_partkey
+    inner join q17_avg on q17_avg.l_partkey = v_lineitem.l_partkey
+where 
+    p_brand = &apos;Brand#23&apos;
+    and p_container = &apos;MED BOX&apos;
+    and l_quantity &lt; t_avg_quantity;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q18" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  The Large Volume Customer Query finds a list of the top 100 customers who have ever placed large quantity orders. 
+--  The query lists the customer name, customer key, the order key, date and total price and the quantity for the order.
+--
+--  Sum quantity from lineitem, filter by sum(quantity), group by customer name, custkey, orderkey, orderdate and totalprice
+
+select
+    c_name,
+    c_custkey,
+    o_orderkey,
+    o_orderdate,
+    o_totalprice,
+    sum(l_quantity)
+from
+    v_lineitem
+    inner join v_orders on l_orderkey = o_orderkey
+    inner join customer on o_custkey = c_custkey
+where
+    o_orderkey is not null
+group by
+    c_name,
+    c_custkey,
+    o_orderkey,
+    o_orderdate,
+    o_totalprice
+having
+    sum(l_quantity) &gt; 300
+order by
+    o_totalprice desc,
+    o_orderdate 
+limit 100;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q19" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  Complex part &amp; lineitem conditions, sum revenue of all
+
+select
+    sum(l_saleprice) as revenue
+from
+    v_lineitem
+    inner join part on l_partkey = p_partkey
+where
+    (
+        p_brand = &apos;Brand#32&apos;
+        and p_container in (&apos;SM CASE&apos;, &apos;SM BOX&apos;, &apos;SM PACK&apos;, &apos;SM PKG&apos;)
+        and l_quantity &gt;= 7 and l_quantity &lt;= 7 + 10
+        and p_size between 1 and 5
+        and l_shipmode in (&apos;AIR&apos;, &apos;AIR REG&apos;)
+        and l_shipinstruct = &apos;DELIVER IN PERSON&apos;
+    )
+    or
+    (
+        p_brand = &apos;Brand#35&apos;
+        and p_container in (&apos;MED BAG&apos;, &apos;MED BOX&apos;, &apos;MED PKG&apos;, &apos;MED PACK&apos;)
+        and l_quantity &gt;= 15 and l_quantity &lt;= 15 + 10
+        and p_size between 1 and 10
+        and l_shipmode in (&apos;AIR&apos;, &apos;AIR REG&apos;)
+        and l_shipinstruct = &apos;DELIVER IN PERSON&apos;
+    )
+    or
+    (
+        p_brand = &apos;Brand#24&apos;
+        and p_container in (&apos;LG CASE&apos;, &apos;LG BOX&apos;, &apos;LG PACK&apos;, &apos;LG PKG&apos;)
+        and l_quantity &gt;= 26 and l_quantity &lt;= 26 + 10
+        and p_size between 1 and 15
+        and l_shipmode in (&apos;AIR&apos;, &apos;AIR REG&apos;)
+        and l_shipinstruct = &apos;DELIVER IN PERSON&apos;
+    );</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q20" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  For part like &apos;forest%&apos; and supplier in CANADA, find suppliers whose stock is more than demand.
+
+with tmp3 as (
+    select l_partkey, 0.5 * sum(l_quantity) as sum_quantity, l_suppkey
+    from v_lineitem
+    inner join supplier on l_suppkey = s_suppkey
+    inner join nation on s_nationkey = n_nationkey
+    inner join part on l_partkey = p_partkey
+    where l_shipdate &gt;= &apos;1994-01-01&apos; and l_shipdate &lt;= &apos;1995-01-01&apos;
+    and n_name = &apos;CANADA&apos;
+    and p_name like &apos;forest%&apos;
+    group by l_partkey, l_suppkey
+)
+
+select
+    s_name,
+    s_address
+from
+    v_partsupp
+    inner join supplier on ps_suppkey = s_suppkey
+    inner join tmp3 on ps_partkey = l_partkey and ps_suppkey = l_suppkey
+where
+    ps_availqty &gt; sum_quantity
+group by
+    s_name, s_address
+order by
+    s_name;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q21" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">-- This query identifies certain suppliers who were not able to ship required parts in a timely manner.
+-- Count distinct suppkey from lineitem, filter by order status, receiptdeplayed, nation name
+
+select s_name, count(*) as numwait
+from
+(
+    select
+        l1.l_suppkey,
+        s_name,
+        l1.l_orderkey
+    from
+        v_lineitem l1
+        inner join v_orders on l1.l_orderkey = o_orderkey
+        inner join supplier on l1.l_suppkey = s_suppkey
+        inner join nation on s_nationkey = n_nationkey
+        inner join (
+            select
+                l_orderkey,
+                count (distinct l_suppkey)
+            from
+                v_lineitem inner join v_orders on l_orderkey = o_orderkey
+            where
+                o_orderstatus = &apos;F&apos;
+            group by
+                l_orderkey
+            having
+                count (distinct l_suppkey) &gt; 1
+        ) l2 on l1.l_orderkey = l2.l_orderkey
+        inner join (
+            select
+                l_orderkey,
+                count (distinct l_suppkey)
+            from
+                v_lineitem inner join v_orders on l_orderkey = o_orderkey
+            where
+                o_orderstatus = &apos;F&apos;
+                and l_receiptdelayed = 1
+            group by
+                l_orderkey
+            having
+                count (distinct l_suppkey) = 1
+        ) l3 on l1.l_orderkey = l3.l_orderkey
+    where
+        o_orderstatus = &apos;F&apos;
+        and l_receiptdelayed = 1
+        and n_name = &apos;SAUDI ARABIA&apos;
+    group by
+        l1.l_suppkey,
+        s_name,
+        l1.l_orderkey
+)
+group by
+    s_name
+order by
+    numwait desc,
+    s_name
+limit 100;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Q22" enabled="true">
+          <stringProp name="dataSource">kylin-jdbc</stringProp>
+          <stringProp name="queryType">Select Statement</stringProp>
+          <stringProp name="query">--  For certain countries (c_phone prefix), find customer who has no order, 
+--  but account balance higher than avg, count such customers group by country.
+
+with avg_tmp as (
+    select
+        avg(c_acctbal) as avg_acctbal
+    from
+        customer
+    where
+        c_acctbal &gt; 0.00 and substring(c_phone, 1, 2) in (&apos;13&apos;,&apos;31&apos;,&apos;23&apos;,&apos;29&apos;,&apos;30&apos;,&apos;18&apos;,&apos;17&apos;)
+),
+cus_tmp as (
+    select c_custkey as noordercus
+    from
+        customer left join v_orders on c_custkey = o_custkey
+    where o_orderkey is null
+    group by c_custkey
+)
+
+select
+    cntrycode,
+    count(1) as numcust,
+    sum(c_acctbal) as totacctbal
+from (
+    select
+        substring(c_phone, 1, 2) as cntrycode,
+        c_acctbal
+    from 
+        customer inner join cus_tmp on c_custkey = noordercus, avg_tmp
+    where 
+        substring(c_phone, 1, 2) in (&apos;13&apos;,&apos;31&apos;,&apos;23&apos;,&apos;29&apos;,&apos;30&apos;,&apos;18&apos;,&apos;17&apos;)
+        and c_acctbal &gt; avg_acctbal
+) t
+group by
+    cntrycode
+order by
+    cntrycode;</stringProp>
+          <stringProp name="queryArguments"></stringProp>
+          <stringProp name="queryArgumentsTypes"></stringProp>
+          <stringProp name="variableNames"></stringProp>
+          <stringProp name="resultVariable"></stringProp>
+          <stringProp name="queryTimeout"></stringProp>
+          <stringProp name="resultSetHandler">Store as String</stringProp>
+          <stringProp name="resultSetMaxRows"></stringProp>
+        </JDBCSampler>
+        <hashTree/>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
