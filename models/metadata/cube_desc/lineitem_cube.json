@@ -275,79 +275,9 @@
         "type" : "column",
         "value" : "V_LINEITEM.L_SUPPKEY"
       },
-      "returntype" : "hllc(10)"
+      "returntype" : "bitmap"
     }
-  }, {
-    "name" : "EXTENDED_C_ADDRESS",
-    "function" : {
-      "expression" : "EXTENDED_COLUMN",
-      "parameter": {
-        "type": "column",
-        "value": "V_ORDERS.O_CUSTKEY",
-        "next_parameter": {
-          "type": "column",
-          "value": "CUSTOMER.C_ADDRESS"
-        }
-      },
-      "returntype" : "extendedcolumn(200)"
-    }
-  }, {
-    "name" : "EXTENDED_C_PHONE",
-    "function" : {
-      "expression" : "EXTENDED_COLUMN",
-      "parameter": {
-        "type": "column",
-        "value": "V_ORDERS.O_CUSTKEY",
-        "next_parameter": {
-          "type": "column",
-          "value": "CUSTOMER.C_PHONE"
-        }
-      },
-      "returntype" : "extendedcolumn(200)"
-    }
-  }, {
-    "name" : "EXTENDED_C_COMMENT",
-    "function" : {
-      "expression" : "EXTENDED_COLUMN",
-      "parameter": {
-        "type": "column",
-        "value": "V_ORDERS.O_CUSTKEY",
-        "next_parameter": {
-          "type": "column",
-          "value": "CUSTOMER.C_COMMENT"
-        }
-      },
-      "returntype" : "extendedcolumn(200)"
-    }
-  }, {
-    "name" : "EXTENDED_C_ACCTBAL",
-    "function" : {
-      "expression" : "EXTENDED_COLUMN",
-      "parameter": {
-        "type": "column",
-        "value": "V_ORDERS.O_CUSTKEY",
-        "next_parameter": {
-          "type": "column",
-          "value": "CUSTOMER.C_ACCTBAL"
-        }
-      },
-      "returntype" : "extendedcolumn(200)"
-    }
-  }, {
-    "name" : "EXTENDED_O_TOTALPRICE",
-    "function" : {
-      "expression" : "EXTENDED_COLUMN",
-      "parameter": {
-        "type": "column",
-        "value": "V_LINEITEM.L_ORDERKEY",
-        "next_parameter": {
-          "type": "column",
-          "value": "V_ORDERS.O_TOTALPRICE"
-        }
-      },
-      "returntype" : "extendedcolumn(200)"
-    }
-  } ],
+  }],
   "dictionaries" : [ ],
   "rowkey" : {
     "rowkey_columns" : [ {
@@ -493,13 +423,7 @@
         "qualifier" : "M",
         "measure_refs" : [ "COUNT_DISTINCT_SUPPKEY" ]
       } ]
-    }, {
-      "name" : "F3",
-      "columns" : [ {
-        "qualifier" : "M",
-        "measure_refs" : [ "EXTENDED_C_ADDRESS", "EXTENDED_C_PHONE", "EXTENDED_C_COMMENT", "EXTENDED_C_ACCTBAL", "EXTENDED_O_TOTALPRICE" ]
-      } ]
-    } ]
+    }]
   },
   "aggregation_groups" : [ {
     "includes" : [ "S_NATION.N_NAME", "C_NATION.N_NAME", "S_REGION.R_NAME", "C_REGION.R_NAME", "V_LINEITEM.L_SHIPMODE", "CUSTOMER.C_MKTSEGMENT", "V_LINEITEM.L_SHIPYEAR", "V_LINEITEM.L_SHIPDATE", "V_ORDERS.O_ORDERYEAR", "V_ORDERS.O_ORDERDATE", "V_LINEITEM.L_LINESTATUS", "V_LINEITEM.L_RETURNFLAG", "V_LINEITEM.L_SHIPDELAYED", "V_LINEITEM.L_RECEIPTDELAYED", "V_ORDERS.O_ORDERPRIORITY", "V_ORDERS.O_ORDERSTATUS", "V_LINEITEM.L_RECEIPTDATE", "V_ORDERS.O_SHIPPRIORITY" ],

@@ -130,7 +130,7 @@
         "type" : "column",
         "value" : "V_PARTSUPP.PS_SUPPKEY"
       },
-      "returntype" : "hllc(14)"
+      "returntype" : "bitmap"
     }
   } ],
   "dictionaries" : [ ],

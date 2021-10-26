@@ -50,7 +50,7 @@
         "type" : "column",
         "value" : "V_ORDERS.O_ORDERKEY"
       },
-      "returntype" : "hllc(10)"
+      "returntype" : "bitmap"
     }
   } ],
   "dictionaries" : [ ],
