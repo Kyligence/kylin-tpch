@@ -73,7 +73,8 @@
     "select_rule" : {
       "hierarchy_dims" : [ ],
       "mandatory_dims" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_PHONE", "CUSTOMER.C_ACCTBAL" ],
-      "joint_dims" : [ ]
+      "joint_dims" : [ ],
+      "dim_cap": 1
     }
   } ],
   "notify_list" : [ ],
@@ -81,9 +82,15 @@
   "partition_date_start" : 0,
   "auto_merge_time_ranges" : [ ],
   "retention_range" : 0,
-  "engine_type" : 2,
+  "parent_forward": 300,
+  "engine_type" : 6,
   "storage_type" : 2,
-  "override_kylin_properties" : { 
-     "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true"
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled": "true",
+    "kylin.storage.columnar.shard-size-mb": "128",
+    "kylin.storage.columnar.shard-rowcount": "1500000",
+    "kylin.storage.columnar.shard-countdistinct-rowcount": "1200000",
+    "kylin.storage.columnar.repartition-threshold-size-mb": "128"
   }
 }
