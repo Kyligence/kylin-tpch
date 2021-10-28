@@ -494,9 +494,14 @@
   "partition_date_start" : 0,
   "auto_merge_time_ranges" : [ ],
   "retention_range" : 0,
-  "engine_type" : 2,
+  "engine_type" : 6,
   "storage_type" : 2,
   "override_kylin_properties" : {
-    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true"
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled": "false",
+    "kylin.storage.columnar.shard-size-mb": "128",
+    "kylin.storage.columnar.shard-rowcount": "1500000",
+    "kylin.storage.columnar.shard-countdistinct-rowcount": "1200000",
+    "kylin.storage.columnar.repartition-threshold-size-mb": "128"
   }
 }
