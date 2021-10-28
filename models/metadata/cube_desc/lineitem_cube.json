@@ -102,6 +102,16 @@
     "column" : "O_ORDERYEAR",
     "derived" : null
   }, {
+    "name" : "O_ORDERKEY",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERKEY",
+    "derived" : null
+  }, {
+    "name" : "O_TOTALPRICE",
+    "table" : "V_ORDERS",
+    "column" : "O_TOTALPRICE",
+    "derived" : null
+  }, {
     "name" : "S_SUPPKEY",
     "table" : "SUPPLIER",
     "column" : null,
@@ -170,6 +180,31 @@
     "name" : "C_NAME",
     "table" : "CUSTOMER",
     "column" : "C_NAME",
+    "derived" : null
+  }, {
+    "name" : "C_CUSTKEY",
+    "table" : "CUSTOMER",
+    "column" : "C_CUSTKEY",
+    "derived" : null
+  }, {
+    "name" : "C_ADDRESS",
+    "table" : "CUSTOMER",
+    "column" : "C_ADDRESS",
+    "derived" : null
+  }, {
+    "name" : "C_PHONE",
+    "table" : "CUSTOMER",
+    "column" : "C_PHONE",
+    "derived" : null
+  }, {
+    "name" : "C_ACCTBAL",
+    "table" : "CUSTOMER",
+    "column" : "C_ACCTBAL",
+    "derived" : null
+  }, {
+    "name" : "C_COMMENT",
+    "table" : "CUSTOMER",
+    "column" : "C_COMMENT",
     "derived" : null
   }, {
     "name" : "C_MKTSEGMENT",
