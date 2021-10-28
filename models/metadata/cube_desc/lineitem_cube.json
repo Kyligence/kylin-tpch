@@ -500,6 +500,7 @@
   "retention_range" : 0,
   "engine_type" : 6,
   "storage_type" : 2,
+  "parent_forward": 300,
   "override_kylin_properties" : {
     "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
     "kylin.cube.cubeplanner.enabled": "false",
