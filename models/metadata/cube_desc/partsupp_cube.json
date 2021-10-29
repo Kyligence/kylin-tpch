@@ -201,7 +201,8 @@
     "select_rule" : {
       "hierarchy_dims" : [ ],
       "mandatory_dims" : [ ],
-      "joint_dims" : [ [ "NATION.N_NAME", "REGION.R_NAME", "V_PARTSUPP.PS_SUPPLYCOST" ], [ "PART.P_SIZE", "PART.P_TYPE", "PART.P_MFGR", "PART.P_BRAND", "PART.P_NAME" ] ]
+      "joint_dims" : [ [ "NATION.N_NAME", "REGION.R_NAME", "V_PARTSUPP.PS_SUPPLYCOST" ], [ "PART.P_SIZE", "PART.P_TYPE", "PART.P_MFGR", "PART.P_BRAND", "PART.P_NAME" ] ],
+      "dim_cap": 1
     }
   } ],
   "notify_list" : [ ],
@@ -209,9 +210,15 @@
   "partition_date_start" : 0,
   "auto_merge_time_ranges" : [ ],
   "retention_range" : 0,
-  "engine_type" : 2,
+  "engine_type" : 6,
   "storage_type" : 2,
+  "parent_forward": 300,
   "override_kylin_properties" : {
-    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true"
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled": "true",
+    "kylin.storage.columnar.shard-size-mb": "128",
+    "kylin.storage.columnar.shard-rowcount": "1500000",
+    "kylin.storage.columnar.shard-countdistinct-rowcount": "1200000",
+    "kylin.storage.columnar.repartition-threshold-size-mb": "128"
   }
 }

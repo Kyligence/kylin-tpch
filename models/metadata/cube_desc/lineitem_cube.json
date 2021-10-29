@@ -503,7 +503,7 @@
   "parent_forward": 300,
   "override_kylin_properties" : {
     "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
-    "kylin.cube.cubeplanner.enabled": "false",
+    "kylin.cube.cubeplanner.enabled": "true",
     "kylin.storage.columnar.shard-size-mb": "128",
     "kylin.storage.columnar.shard-rowcount": "1500000",
     "kylin.storage.columnar.shard-countdistinct-rowcount": "1200000",
