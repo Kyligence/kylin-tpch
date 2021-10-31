@@ -302,16 +302,6 @@
       },
       "returntype" : "double"
     }
-  }, {
-    "name" : "COUNT_DISTINCT_SUPPKEY",
-    "function" : {
-      "expression" : "COUNT_DISTINCT",
-      "parameter" : {
-        "type" : "column",
-        "value" : "V_LINEITEM.L_SUPPKEY"
-      },
-      "returntype" : "bitmap"
-    }
   }],
   "dictionaries" : [ ],
   "rowkey" : {
@@ -451,13 +441,7 @@
       "columns" : [ {
         "qualifier" : "M",
         "measure_refs" : [ "_COUNT_", "EXTENDEDPRICE_SUM", "SALEPRICE_SUM", "TAXPRICE_SUM", "SUPPLYCOST_SUM", "DISCOUNT_SUM", "QUANTITY_SUM" ]
-      } ]
-    }, {
-      "name" : "F2",
-      "columns" : [ {
-        "qualifier" : "M",
-        "measure_refs" : [ "COUNT_DISTINCT_SUPPKEY" ]
-      } ]
+      }]
     }]
   },
   "aggregation_groups" : [ {
