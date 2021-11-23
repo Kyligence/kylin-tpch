@@ -1,0 +1,117 @@
+# deploy kylin version: current only support Kylin 4
+DEPLOY_KYLIN_VERSION: v4
+
+# deploy platform: current only support ec2
+DEPLOY_PLATFORM: ec2
+
+AWS_REGION:                                   # example: cn-northwest-1
+
+# Dangerous Params
+ALWAYS_DESTROY_ALL: false                     # if set to false means that vpc for cluster always retain
+
+# For Debug
+CLOUD_ADDR:
+
+# Stack Names
+# Note: if need to change stack names please change it in ../utils.py too.
+VPC_STACK: ec2-or-emr-vpc-stack
+DISTRIBUTION_STACK: ec2-distribution-stack
+MASTER_STACK: ec2-master-stack
+SLAVE_STACK: ec2-slave-stack
+SLAVE_SCALE_4_STACK: ec2-slave-04
+SLAVE_SCALE_5_STACK: ec2-slave-05
+SLAVE_SCALE_6_STACK: ec2-slave-06
+
+#Backup Params
+BackupMetadataBucketFullPath:                 # example: s3://xxx/kylin/backup/
+
+# Params
+EC2_DISTRIBUTION_PARAMS:
+  # None value can be passed by the pre-step output, so params need to wait pre-step complete.
+  # Note: params details check in related yaml file
+  PublicSubnetID:
+  SecurityGroupID:
+  EMREc2KeyName:
+  AssociatedPublicIp: 'true'
+  # Note: this bucket must be created before run
+  BucketFullPath:                            # example: s3://xxx/kylin
+  BucketPath:                                # example: /xxx/kylin which matched above BucketFullPath suffix
+
+  DistributionScriptFileName: prepare-ec2-env-for-distribution.sh
+  # Note: this role must be created before run raven
+  Ec2OperationRole: Ec2Kylin4BenchmarkRole
+  Ec2Mode: test
+  # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
+  Ec2InstanceTypeForDistribution: m5.xlarge
+  Ec2VolumeSizeForDistributionNode: '20'
+  Ec2VolumnTypeForDistributionNode: gp2
+EC2_MASTER_PARAMS:
+  # None value can be passed by the pre-step output, so params need to wait pre-step complete.
+  # Note: params details check in related yaml file
+  Ec2DbHost:
+  Ec2ZookeeperkHost:
+  Ec2InstanceProfile:
+  PublicSubnetID:
+  SecurityGroupID:
+
+  AssociatedPublicIp: 'true'
+  # Must be in [ all, job, query ], default is job for the timeline!!!
+  Ec2KylinMode: all
+
+  Ec2DbUser: 'root'
+  Ec2DbPassword: '123456'
+  # Note: this key pair must be created before run
+  EMREc2KeyName:
+  Ec2WaitingTime: '400'
+  # Note: this bucket must be created before run
+  BucketFullPath:                           # example: s3://xxx/kylin
+  BucketPath:                               # example: /xxx/kylin which matched above BucketFullPath suffix
+
+  MasterScriptFileName: prepare-ec2-env-for-master.sh
+  Ec2Mode: product
+  # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
+  InstanceType: m5.2xlarge
+  Ec2VolumnTypeForMasterNode: gp2
+  Ec2VolumeSizeForMasterNode: '50'
+
+EC2_SLAVE_PARAMS:
+  # None value can be passed by the pre-step output, so params need to wait pre-step complete.
+  # Note: params details check in related yaml file
+  MasterNodeHost:
+  Ec2InstanceProfile:
+  PublicSubnetID:
+  SecurityGroupID:
+  EMREc2KeyName:
+  # set 'true' for test
+  AssociatedPublicIp: 'true'
+  WaitingTime: '400'
+  # Note: this bucket must be created before run raven
+  BucketFullPath:                           # example: s3://xxx/kylin
+  BucketPath:                               # example: /xxx/kylin which matched above BucketFullPath suffix
+  SlaveScriptFileName: prepare-ec2-env-for-slave.sh
+  Ec2Mode: test
+  # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
+  InstanceType: m5.2xlarge
+  Ec2VolumnTypeForSlaveNode: gp2
+  Ec2VolumeSizeForSlaveNode: '50'
+
+EC2_SCALE_SLAVE_PARAMS:
+  # None value can be passed by the pre-step output, so params need to wait pre-step complete.
+  # Note: params details check in related yaml file
+  MasterNodeHost:
+  Ec2InstanceProfile:
+  PublicSubnetID:
+  SecurityGroupID:
+  WorkerNum:
+  EMREc2KeyName:
+  # set 'true' for test
+  AssociatedPublicIp: 'true'
+  # Note: this bucket must be created before run raven
+  BucketFullPath:                           # example: s3://xxx/kylins3://xxx/kylin
+  BucketPath:                               # example: /xxx/kylin which matched above BucketFullPath suffix
+  ScriptFileName: prepare-client-for-raven.sh
+  Ec2Mode: test
+  # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
+  InstanceType: m5.2xlarge
+  Ec2VolumnTypeForSlaveNode: gp2
+  Ec2VolumeSizeForSlaveNode: '30'

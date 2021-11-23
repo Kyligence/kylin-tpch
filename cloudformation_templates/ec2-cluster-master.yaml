@@ -1,0 +1,223 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create Master nodes for ec2 instances and deploy related services, hadoop/spark/zookeeper/hive/jdk/kylin4
+Parameters:
+  # Must passed Parameters
+  Ec2DbHost:
+    Type: String
+    Description: Must be created at pre-step, db from ec2 instance
+  Ec2DbUser:
+    Type: String
+    Description: Must be created at pre-step
+    Default: root
+  Ec2DbPassword:
+    Type: String
+    Description: Must be created at pre-step and this can be modified in the script not yaml file.
+    Default: 123456
+  Ec2ZookeeperkHost:
+    Type: String
+    Description: Must be created at pre-step, default is same as Ec2DbHost
+  Ec2KylinMode:
+    Type: String
+    Description: Kylin mode for cluster, default is all, values in [all, query, job]
+    Default: all
+    AllowedValues:
+      - all
+      - query
+      - job
+  Ec2InstanceProfile:
+    Type: String
+    Description: Must be created at pre-step
+  PublicSubnetID:
+    Type: String
+  SecurityGroupID:
+    Type: String
+  AssociatedPublicIp:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  EMREc2KeyName:
+    Type: String
+    Default: kylin4-xtt-emr-5.33
+  Ec2WaitingTime:
+    Type: Number
+    Default: 200
+    Description: sleep time to waitring services started in master node
+
+  Ec2Mode:
+    Type: String
+    Default: test
+    AllowedValues:
+      - test
+      - product
+    Description: set the flag for Mode, if not test use product's configuration
+
+#   Optional Parameters
+  BucketFullPath:
+    Type: String
+    Default: s3://xiaoxiang-yu/kylin-xtt
+  BucketPath:
+    Type: String
+    Default: /xiaoxiang-yu/kylin-xtt
+    Description: Url without prefix s3:/
+  MasterScriptFileName:
+    Type: String
+    Default: prepare-ec2-env-for-master.sh
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    ConstraintDescription: must be a valid EC2 instance type.
+    Default: m5.4xlarge
+    AllowedValues:
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+  InstanceTypeForTest:
+    Description: EC2 instance type
+    Type: String
+    ConstraintDescription: must be a valid EC2 instance type.
+    Default: m5.2xlarge
+    AllowedValues:
+      - m5.2xlarge
+  Ec2VolumnTypeForMasterNode:
+    Type: String
+    Default: gp2
+    AllowedValues:
+      - gp2
+      - gp3
+      - io1
+      - io2
+      - sc1
+      - st1
+      - standard
+  Ec2VolumeSizeForMasterNode:
+    Type: Number
+    Default: 30
+    MinValue: 30
+    MaxValue: 100
+
+  Ec2VolumnTypeForMasterNodeForTest:
+    Type: String
+    Default: gp2
+    AllowedValues:
+      - gp2
+
+  Ec2VolumeSizeForMasterNodeForTest:
+    Type: Number
+    Default: 30
+    MinValue: 30
+    MaxValue: 30
+
+
+Mappings:
+  AWSRegionArch2AMI:
+    cn-north-1:
+      HVMebs: ami-00ac27054b887ff5c
+    cn-northwest-1:
+      HVMebs: ami-0135cb179d33fbe3e
+
+Conditions:
+  NotNullSubnetID:
+    !Not [!Equals [!Ref PublicSubnetID, ""]]
+  NotNullEc2KeyName:
+    !Not [!Equals [!Ref EMREc2KeyName, ""]]
+  NotNullDbHost: !Not [!Equals [!Ref Ec2DbHost, ""]]
+  NotNullDbPass: !Not [!Equals [!Ref Ec2DbPassword, ""]]
+  NotNullDbUser: !Not [!Equals [!Ref Ec2DbUser, ""]]
+  NotNullZkHost: !Not [!Equals [!Ref Ec2ZookeeperkHost, ""]]
+  NotNullKylinMode: !Not [!Equals [!Ref Ec2KylinMode, ""]]
+  IsProductMode: !Equals [!Ref Ec2Mode, "product"]
+  ValidConfigurationForEc2: !And
+    - !Condition NotNullSubnetID
+    - !Condition NotNullEc2KeyName
+    - !Condition NotNullDbHost
+    - !Condition NotNullDbPass
+    - !Condition NotNullDbUser
+    - !Condition NotNullZkHost
+    - !Condition NotNullKylinMode
+  IsAssociatedPublicIp: !Equals [!Ref AssociatedPublicIp, "true"]
+
+Resources:
+  Ec2InstanceOfMaster:
+    Type: AWS::EC2::Instance
+    DeletionPolicy: Delete
+    Condition: ValidConfigurationForEc2
+    Properties:
+      ImageId: !FindInMap
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - HVMebs
+      Tags:
+        - Key: Project
+          Value: Kylin4
+        - Key: Name
+          Value: Master Node for kylin4
+      InstanceType:
+        !If
+          - IsProductMode
+          - !Ref InstanceType
+          - !Ref InstanceTypeForTest
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          Description: Auto create for Master node in benchmark
+          DeleteOnTermination: true
+          AssociatePublicIpAddress: !Ref AssociatedPublicIp
+          SubnetId: !Ref PublicSubnetID
+          GroupSet:
+            - !Ref SecurityGroupID
+      BlockDeviceMappings:
+        - !If
+          - IsProductMode
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref Ec2VolumeSizeForMasterNode
+              VolumeType: !Ref Ec2VolumnTypeForMasterNode
+              DeleteOnTermination: true
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref Ec2VolumeSizeForMasterNodeForTest
+              VolumeType: !Ref Ec2VolumnTypeForMasterNodeForTest
+              DeleteOnTermination: true
+      KeyName: !Ref EMREc2KeyName
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash -xe
+              cd /home/ec2-user
+              aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateMasterScriptFileName} . --region ${PrivateRegion}
+              bash ${PrivateMasterScriptFileName} --bucket-url ${PrivateBucketPath} --region ${PrivateRegion} --db-host ${PrivateDbHost} --db-password ${PrivateDbPass} --db-user ${PrivateDbUser}  --zookeeper-host ${PrivateZkHost} --kylin-mode ${PrivaiteKylinMode} --waiting-time ${PrivateWaitingTime}
+              echo " Master is ready ..."
+            - PrivateBucketFullPath: !Ref BucketFullPath
+              PrivateMasterScriptFileName: !Ref MasterScriptFileName
+              PrivateBucketPath: !Ref BucketPath
+              PrivateRegion: !Ref AWS::Region
+              PrivateDbHost: !Ref Ec2DbHost
+              PrivateDbPass: !Ref Ec2DbPassword
+              PrivateDbUser: !Ref Ec2DbUser
+              PrivateZkHost: !Ref Ec2ZookeeperkHost
+              PrivaiteKylinMode: !Ref Ec2KylinMode
+              PrivateWaitingTime: !Ref Ec2WaitingTime
+
+Outputs:
+  MasterEc2InstanceId:
+    Description: the id of Master Node Innstance
+    Value: !Ref Ec2InstanceOfMaster
+  MasterEc2InstancePrivateIp:
+    Description: Master Instance Private IP
+    Value: !GetAtt Ec2InstanceOfMaster.PrivateIp
+  MasterEc2InstancePublicIp:
+    Description: Master Instance Public IP to acess
+    Value: !GetAtt Ec2InstanceOfMaster.PublicIp
+    Condition: IsAssociatedPublicIp
+  MasterEc2InstanceProfileId:
+    Description: Instance Profile Id from Distrbution Yaml
+    Value: !Ref Ec2InstanceProfile
+  MasterSubnetIdDependsOnDNode:
+    Description: SubnetId in the vpc for Slave Node
+    Value: !Ref PublicSubnetID
+  MasterSecurityGroupIdDependsOnDNode:
+    Description: Security group id for Slave Node
+    Value: !Ref SecurityGroupID

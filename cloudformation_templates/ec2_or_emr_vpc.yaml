@@ -1,0 +1,221 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: create vpc, subnet and security for emr or ec2 's benchmark
+Parameters:
+  # Must passed parameters
+  # Optional Parameters
+  KylinVersion:
+    Type: String
+    Default: 4
+    Description: this version is for tag
+  ClusterType:
+    Type: String
+    Default: EC2
+    Description: this type is for tag
+    AllowedValues:
+      - EC2
+  VpcCidrBlock:
+    Type: String
+    Default: 10.1.0.0/16
+  Subnet01CidrBlock:
+    Type: String
+    Default: 10.1.0.0/24
+  Subnet02CidrBlock:
+    Type: String
+    Default: 10.1.1.0/24
+  PrivateSubnet01CidrBlock:
+    Type: String
+    Default: 10.1.2.0/24
+  PrivateSubnet02CidrBlock:
+    Type: String
+    Default: 10.1.3.0/24
+  BucketObject:
+    Type: String
+    Description: Resources to deploy kylin4 or kylin3, example s3://xxx/kylin
+    Default:
+
+Mappings:
+  Region2Az:
+    cn-northwest-1:
+      '1': cn-northwest-1a
+      '2': cn-northwest-1b
+
+Resources:
+  Ec2OrEmrBenchMarkVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidrBlock
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - Kylin
+              - !Ref KylinVersion
+              - EmrandEc2
+              - Vpc
+    DeletionPolicy: Delete
+  Ec2OrEmrBenchMarkSubnet1:
+    Type: AWS::EC2::Subnet
+    DeletionPolicy: Delete
+    Properties:
+      VpcId: !Ref Ec2OrEmrBenchMarkVpc
+      CidrBlock: !Ref Subnet01CidrBlock
+      AvailabilityZone: !FindInMap
+        - Region2Az
+        - !Ref 'AWS::Region'
+        - '1'
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - Kylin
+              - !Ref KylinVersion
+              - !Ref ClusterType
+              - pub1
+  Ec2OrEmrBenchMarkSubnet2:
+    Type: AWS::EC2::Subnet
+    DeletionPolicy: Delete
+    Properties:
+      VpcId: !Ref Ec2OrEmrBenchMarkVpc
+      CidrBlock: !Ref Subnet02CidrBlock
+      AvailabilityZone: !FindInMap
+        - Region2Az
+        - !Ref 'AWS::Region'
+        - '2'
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - Kylin
+              - !Ref KylinVersion
+              - !Ref ClusterType
+              - pub2
+  Ec2OrEmrBenchMarkInternetGateway:
+    DeletionPolicy: Delete
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - Kylin
+              - !Ref KylinVersion
+              - !Ref ClusterType
+              - InternetGateWay
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DeletionPolicy: Delete
+    Properties:
+      VpcId: !Ref Ec2OrEmrBenchMarkVpc
+      InternetGatewayId: !Ref Ec2OrEmrBenchMarkInternetGateway
+  Ec2OrEmrBenchMarkRoutetable:
+    Type: AWS::EC2::RouteTable
+    DeletionPolicy: Delete
+    Properties:
+      VpcId: !Ref Ec2OrEmrBenchMarkVpc
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - Kylin
+              - !Ref KylinVersion
+              - !Ref ClusterType
+              - Routetable
+  Ec2OrEmrBenchMarkRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - Ec2OrEmrBenchMarkInternetGateway
+      - Ec2OrEmrBenchMarkRoutetable
+    DeletionPolicy: Delete
+    Properties:
+      RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref Ec2OrEmrBenchMarkInternetGateway
+  Subnet1RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DeletionPolicy: Delete
+    Properties:
+      SubnetId: !Ref Ec2OrEmrBenchMarkSubnet1
+      RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
+  Subnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DeletionPolicy: Delete
+    Properties:
+      SubnetId: !Ref Ec2OrEmrBenchMarkSubnet2
+      RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
+  Ec2OrEmrBenchMarkSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn: Ec2OrEmrBenchMarkVpc
+    Properties:
+      VpcId: !Ref Ec2OrEmrBenchMarkVpc
+      GroupDescription: Open up SSH access and specify range of ports to itself
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - Kylin
+              - !Ref KylinVersion
+              - !Ref ClusterType
+              - SecurityGroup
+      SecurityGroupIngress:
+        # Need to set this
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp:
+    DeletionPolicy: Delete
+  Ec2OrEmrBenchMarkSecurityGroupFullTcpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DeletionPolicy: Delete
+    Properties:
+      IpProtocol: tcp
+      SourceSecurityGroupId: !Ref Ec2OrEmrBenchMarkSecurityGroup
+      FromPort: 0
+      ToPort: 65535
+      GroupId: !Ref Ec2OrEmrBenchMarkSecurityGroup
+  Ec2OrEmrBenchMarkSecurityGroupFullUdpIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DeletionPolicy: Delete
+    Properties:
+      IpProtocol: udp
+      SourceSecurityGroupId: !Ref Ec2OrEmrBenchMarkSecurityGroup
+      FromPort: 0
+      ToPort: 65535
+      GroupId: !Ref Ec2OrEmrBenchMarkSecurityGroup
+  Ec2OrEmrBenchMarkSecurityGroupFullIcmpIpv4Ingress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DeletionPolicy: Delete
+    Description: special port range from -1 to -1 that means full
+    Properties:
+      IpProtocol: icmp
+      SourceSecurityGroupId: !Ref Ec2OrEmrBenchMarkSecurityGroup
+      FromPort: -1
+      ToPort: -1
+      GroupId: !Ref Ec2OrEmrBenchMarkSecurityGroup
+
+Outputs:
+  VpcId:
+    Description: the id of VPC
+    Value: !Ref Ec2OrEmrBenchMarkVpc
+  Subnet01ID:
+    Description: the id of subnet 01, and this is for emr
+    Value: !Ref Ec2OrEmrBenchMarkSubnet1
+  Subnet02ID:
+    Description: the id of subnet 02, and this is for ec2 nodes
+    Value: !Ref Ec2OrEmrBenchMarkSubnet2
+  CidrIpOfVPC:
+    Description: the cidr block ip of VPC
+    Value: !Ref VpcCidrBlock
+  CidrIpOfSubnet01:
+    Description: the cidr block ip of subnet 01
+    Value: !Ref Subnet01CidrBlock
+  CidrIpOfSubnet02:
+    Description: the cidr block ip of subnet 02
+    Value: !Ref Subnet02CidrBlock
+  SecurityGroupId:
+    Description: the id of security group
+    Value: !Ref Ec2OrEmrBenchMarkSecurityGroup
+  BucketUrl:
+    Description: url for bucket
+    Value: !Ref BucketObject
