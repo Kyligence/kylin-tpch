@@ -4,9 +4,9 @@ Target: deploy Kylin4 on Ec2 with Spark Standalone mode
 
 ## Prerequisite
 
-### 1. Clone or Download this repo
+##### I. Clone or Download this repo
 
-### 2. Download Packages & Upload them to S3 Path which suffix is */tars, example: s3://xxx/kylin/tars
+##### II. Download Packages & Upload them to S3 Path which suffix is */tars, example: `s3://xxx/kylin/tars`
 
 > Note: Download packages for decreasing time of installation.
 
@@ -24,28 +24,28 @@ Target: deploy Kylin4 on Ec2 with Spark Standalone mode
 
 > Note: if you download not match jdk version, please check the scripts/*.sh which variables about jdk!
 
-### 3. Check dependent jars of Kylin4 in ./backup/jars & Upload them to S3 Path which suffix is */jars, example: s3://xxx/kylin/jars
+##### III. Check dependent jars of Kylin4 in `./backup/jars` & Upload them to S3 Path which suffix is */jars, example: `s3://xxx/kylin/jars`
 
 Kylin4 needed extra jars
 
 - commons-configuration-1.3.jar
 - mysql-connector-java-5.1.40.jar
 
-### 4. Check needed deploy scripts in ./backup/scripts & Upload them to S3 Path which suffix is */scripts, example: s3://xxx/kylin/scripts
+##### IV. Check needed deploy scripts in `./backup/scripts` & Upload them to S3 Path which suffix is */scripts, example: `s3://xxx/kylin/scripts`
 
 - prepare-ec2-env-for-distribution.sh
 - prepare-ec2-env-for-master.sh
 - prepare-ec2-env-for-slave.sh
 
-### 5. Initialize ./kylin_configs.yaml
+##### V. Initialize `./kylin_configs.yaml`
 
-Configure parameters in ./kylin_configs.yaml
+Configure parameters in `./kylin_configs.yaml`
 
-### 6. Initialize needed IAM role and Used User which have access to aws
+##### VI. Initialize needed IAM role and Used User which have access to aws
 
-> Note: if IAM role has created, then set the role name to cloudformation_templates/ec2-cluster-distribution.yaml's `Ec2OperationRole`
+> Note: if IAM role has created, then set the role name to `cloudformation_templates/ec2-cluster-distribution.yaml`'s `Ec2OperationRole`
 
-### 7. Initialize needed `SecurityGroupIngress` in cloudformation_templates/ec2_or_emr_vpc.yaml
+##### VII. Initialize needed `SecurityGroupIngress` in `cloudformation_templates/ec2_or_emr_vpc.yaml`
 
 ## Deploy
 
@@ -54,7 +54,7 @@ Configure parameters in ./kylin_configs.yaml
 2. make virtual env for this repo
 
 > Note: 
->   1. Use `source ./venv/bin/activate` to active virtual env
+>   1. Use `source ./venv/bin/activate` to activate virtual env
 >   2. Use `pip install -r ./requirements.txt` to install dependencies
 
 2. configure aws account which has the access to aws

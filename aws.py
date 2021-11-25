@@ -292,53 +292,6 @@ class AWSInstance:
         )
         return resp
 
-    def scale_up_workers(self, worker_num: int) -> Optional[Dict]:
-        """
-        add workers for kylin to scale spark worker
-        :param worker_num: the worker mark
-        :param master_addr: which master node to associated
-        :return: worker private ip
-        """
-        if self._stack_complete(self.config[Config.SLAVE_SCALE_WORKER.value.format(worker_num)]):
-            logger.warning(f"{self.config[Config.SLAVE_SCALE_WORKER.value.format(worker_num)]} "
-                           f"already created complete.")
-            return
-
-            # Note: the stack name must be pre-step's
-        params: dict = self._merge_params(
-            stack_name=self.config[Config.MASTER_STACK.value],
-            param_name=Config.EC2_SCALE_SLAVE_PARAMS.value,
-            config=self.config,
-        )
-        params.update({'WorkerNum': worker_num})
-
-        resp = self.create_stack(
-            stack_name=self.config[Config.SLAVE_SCALE_WORKER.value.format(worker_num)],
-            file_path=os.path.join(self.yaml_path, File.SLAVE_SCALE_YAML.value),
-            params=params
-        )
-        return resp
-
-    def scale_down_worker(self, worker_num: int) -> Optional[Dict]:
-        if not self._stack_delete_complete(self.config[Config.SLAVE_SCALE_WORKER.value.format(worker_num)]):
-            logger.warning(f"{self.config[Config.SLAVE_SCALE_WORKER.value.format(worker_num)]} "
-                           f"already terminated complete.")
-            return
-        stack_name = self.config[Config.SLAVE_SCALE_WORKER.value.format(worker_num)]
-        resource_type = 'SlaveEc2InstanceId'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-
-        backup_command = 'source ~/.bash_profile && ${SPARK_HOME}/sbin/decommission-worker.sh'
-        self.exec_script_instance_and_return(name_or_id=instance_id, script=backup_command)
-        # FIXME: hard code for sleep spark worker to execute remaining jobs
-        # sleep 5 min to ensure all jobs in decommissioned workers are done
-        time.sleep(60 * 5)
-
-        # before terminate and delete stack, the worker should be decommissioned.
-        resp = self.delete_stack(stack_name)
-        return resp
-
     def _stack_exists(self, stack_name: str, required_status: str = 'CREATE_COMPLETE') -> bool:
         return self._stack_status_check(name_or_id=stack_name, status=required_status)
 
