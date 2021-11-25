@@ -21,10 +21,7 @@ class AWSInstance:
         self.config = config
         self.region = config['AWS_REGION']
         self.cf_client = boto3.client(Client.CLOUD_FORMATION.value, region_name=self.region)
-        if self.config['DEPLOY_PLATFORM'] == 'ec2':
-            self._init_ec2_env()
-        else:
-            self._init_emr_env()
+        self._init_ec2_env()
 
     def _init_ec2_env(self):
         self.ec2_client = boto3.client(Client.EC2.value, region_name=self.region)
@@ -33,15 +30,10 @@ class AWSInstance:
         self.create_complete_waiter = self.cf_client.get_waiter('stack_create_complete')
         self.delete_complete_waiter = self.cf_client.get_waiter('stack_delete_complete')
 
-    def _init_emr_env(self):
-        # TODO: add emr method and other feature
-        pass
-
     def create_vpc_stack(self) -> Optional[Dict]:
         if self._stack_complete(self.config[Config.VPC_STACK.value]):
             logger.warning(f"{self.config[Config.VPC_STACK.value]} already created complete.")
             return
-
         resp = self.create_stack(
             stack_name=self.config[Config.VPC_STACK.value],
             file_path=os.path.join(self.yaml_path, File.VPC_YAML.value),
@@ -50,7 +42,7 @@ class AWSInstance:
         return resp
 
     def terminate_vpc_stack(self) -> Optional[Dict]:
-        if not self._stack_delete_complete(self.config[Config.VPC_STACK.value]):
+        if self._stack_delete_complete(self.config[Config.VPC_STACK.value]):
             logger.warning(f"{self.config[Config.VPC_STACK.value]} already terminated complete.")
             return
 
@@ -151,51 +143,7 @@ class AWSInstance:
         resp = self.delete_stack(stack_name=self.config[Config.SLAVE_STACK.value])
         return resp
 
-    def create_emr_for_kylin4_stack(self) -> Optional[Dict]:
-        if self._stack_complete(self.config[Config.EMR_FOR_KYLIN4_STACK.value]):
-            logger.warning(f"{self.config[Config.EMR_FOR_KYLIN4_STACK.value]} already created complete.")
-            return
-
-        # Note: the stack name must be pre-step's
-        params: dict = self._merge_params(
-            stack_name=self.config[Config.VPC_STACK.value],
-            param_name=Config.EMR_FOR_KYLIN4_PARAMS.value,
-            config=self.config,
-        )
-        resp = self.create_stack(
-            stack_name=self.config[Config.EMR_FOR_KYLIN4_STACK.value],
-            file_path=os.path.join(self.yaml_path, File.SLAVE_YAML.value),
-            params=params
-        )
-        return resp
-
-    def terminate_emr_for_kylin_stack(self) -> Optional[Dict]:
-        if self._stack_delete_complete(self.config[Config.EMR_FOR_KYLIN4_STACK.value]):
-            logger.warning(f"{self.config[Config.EMR_FOR_KYLIN4_STACK.value]} already terminated complete.")
-            return
-        self.backup_metadata_before_emr_terminate(self.config)
-
-        resp = self.delete_stack(stack_name=self.config[Config.EMR_FOR_KYLIN4_STACK.value])
-        return resp
-
-    def create_kylin4_step_on_emr_stack(self) -> Optional[Dict]:
-        if self._stack_complete(self.config[Config.EMR_FOR_KYLIN4_STACK.value]):
-            logger.warning(f"{self.config[Config.EMR_FOR_KYLIN4_STACK.value]} already created complete.")
-            return
-        # Note: the stack name must be pre-step's
-        params: dict = self._merge_params(
-            stack_name=self.config[Config.VPC_STACK.value],
-            param_name=Config.KYLIN4_STEP_ON_EMR_PARAMS.value,
-            config=self.config,
-        )
-        resp = self.create_stack(
-            stack_name=self.config[Config.EMR_FOR_KYLIN4_STACK.value],
-            file_path=os.path.join(self.yaml_path, File.SLAVE_YAML.value),
-            params=params
-        )
-        return resp
-
-    def backup_metadata_before_ec2_terminate(self, stack_name: str, config: dict) -> Dict:
+    def backup_metadata_before_ec2_terminate(self, stack_name: str, config: dict) -> Optional[Dict]:
         if stack_name != config[Config.DISTRIBUTION_STACK.value]:
             logger.warning(f"Only {config[Config.DISTRIBUTION_STACK.value]} should backup before terminate.")
             return
@@ -208,15 +156,6 @@ class AWSInstance:
         cp_to_s3_command = f"aws s3 cp /home/ec2-user/metadata-backup.sql {config['BackupMetadataBucketFullPath']} " \
                            f"--region {config['AWS_REGION']}"
         self.exec_script_instance_and_return(name_or_id=instance_id, script=cp_to_s3_command)
-
-    def backup_metadata_before_emr_terminate(self, stack_name: str, config: dict) -> Dict:
-        if stack_name != config[Config.DISTRIBUTION_STACK.value]:
-            logger.warning(f"Only {config[Config.EMR_FOR_KYLIN4_STACK.value]} should backup before terminate.")
-            return
-        # FIXME: fix this
-        command = f"mysqldump -h$(hostname -i) -uadmin -p123456 " \
-                  f"--databases kylin hive --add-drop-database >  /home/hadoop/metadata-backup.sql"
-        self.exec_script_instance_and_return(name_or_id=stack_name, script=command)
 
     def create_stack(self, stack_name: str, file_path: str, params: dict, capability: str = None) -> Dict:
         if capability:
@@ -271,37 +210,20 @@ class AWSInstance:
         return handled_outputs
 
     def is_ec2_stack_ready(self) -> bool:
-        if not self._stack_complete(self.config[Config.VPC_STACK.value]):
+        if not (
+            self._stack_complete(self.config[Config.VPC_STACK.value])
+            and self._stack_complete(self.config[Config.DISTRIBUTION_STACK.value])
+            and self._stack_complete(self.config[Config.MASTER_STACK.value])
+            and self._stack_complete(self.config[Config.SLAVE_STACK.value])
+        ):
             return False
-        elif not self._stack_complete(self.config[Config.DISTRIBUTION_STACK.value]):
-            return False
-        elif not self._stack_complete(self.config[Config.MASTER_STACK.value]):
-            return False
-        elif not self._stack_complete(self.config[Config.SLAVE_STACK.value]):
-            return False
-        else:
-            return True
+        return True
 
     def is_ec2_stack_terminated(self) -> bool:
         deleted_cost_stacks: bool = (
                 self._stack_delete_complete(self.config[Config.DISTRIBUTION_STACK.value])
                 and self._stack_delete_complete(self.config[Config.MASTER_STACK.value])
                 and self._stack_delete_complete(self.config[Config.SLAVE_STACK.value]))
-        if deleted_cost_stacks and \
-                ((not self.config['ALWAYS_DESTROY_ALL'])
-                 or (self._stack_delete_complete(self.config[Config.VPC_STACK.value]))):
-            return True
-        return False
-
-    def is_emr_stack_ready(self) -> Dict:
-        if not (self._stack_complete(self.config[Config.VPC_STACK.value])
-                and self._stack_complete(self.config[Config.EMR_FOR_KYLIN4_STACK])
-                and self._stack_complete(self.config[Config.KYLIN4_STEP_ON_EMR_STACK])):
-            return False
-        return True
-
-    def is_emr_stack_terminated(self) -> bool:
-        deleted_cost_stacks: bool = self._stack_delete_complete(self.config[Config.EMR_FOR_KYLIN4_STACK.value])
         if deleted_cost_stacks and \
                 ((not self.config['ALWAYS_DESTROY_ALL'])
                  or (self._stack_delete_complete(self.config[Config.VPC_STACK.value]))):
@@ -449,8 +371,8 @@ class AWSInstance:
             self.delete_complete_waiter.wait(
                 StackName=stack_name,
                 WaiterConfig={
-                    'Delay': 30,
-                    'MaxAttempts': 6
+                    'Delay': 60,
+                    'MaxAttempts': 2
                 }
             )
         except WaiterError as wx:
@@ -502,57 +424,27 @@ class AWS:
         assert cloud_instance.is_ec2_stack_terminated() is True
 
     @staticmethod
-    def aws_emr_cluster(config) -> Dict:
-        cloud_instance = AWSInstance(config)
-        if not cloud_instance.is_emr_stack_ready():
-            cloud_instance.create_vpc_stack()
-            cloud_instance.create_emr_for_kylin4_stack()
-            cloud_instance.create_kylin4_step_on_emr_stack()
-        # return the master stack resources
-        resources = cloud_instance.get_stack_output(config[Config.EMR_FOR_KYLIN4_STACK.value])
-        return resources
-
-    @staticmethod
-    def terminate_emr_cluster(config) -> Optional[Dict]:
-        cloud_instance = AWSInstance(config)
-        if cloud_instance.is_emr_stack_terminated():
-            logger.warning('emr stack already deleted.')
-            return
-        cloud_instance.terminate_emr_for_kylin_stack()
-        if config['ALWAYS_DESTROY_ALL'] is True:
-            cloud_instance.terminate_vpc_stack()
-        # don't need to terminate vpc stack, because it's free resource on your aws if don't use it.
-        # after terminated all node check again.
-        assert cloud_instance.is_emr_stack_terminated() is True
-
-    @staticmethod
     def aws_cloud(config: Dict) -> str:
-        if config[Config.DEPLOY_PLATFORM.value] == 'ec2':
-            resource = AWS.aws_ec2_cluster(config)
-            # only get the master dns
-            # FIXME: fix hard code and get method
-            if config[Config.EC2_MASTER_PARAMS.value]['AssociatedPublicIp'] == 'true':
-                return resource.get('MasterEc2InstancePublicIp')
-            return resource.get('MasterEc2InstancePrivateIp')
-        elif config[Config.DEPLOY_PLATFORM.value] == 'emr':
-            resource = AWS.aws_emr_cluster(config)
-            return resource.get('ClusterMasterPublicDns')
-
-        msg = f'Not supported platform: {config[Config.DEPLOY_PLATFORM.value]}.'
-        logger.error(msg)
-        raise Exception(msg)
-
-    @staticmethod
-    def destroy_aws_cloud(config):
-        if config[Config.DEPLOY_PLATFORM.value] not in ['ec2', 'emr']:
+        if config[Config.DEPLOY_PLATFORM.value] != 'ec2':
             msg = f'Not supported platform: {config[Config.DEPLOY_PLATFORM.value]}.'
             logger.error(msg)
             raise Exception(msg)
 
-        if config[Config.DEPLOY_PLATFORM.value] == 'ec2':
-            AWS.terminate_ec2_cluster(config)
-        elif config[Config.DEPLOY_PLATFORM.value] == 'emr':
-            AWS.terminate_emr_cluster(config)
+        resource = AWS.aws_ec2_cluster(config)
+        # only get the master dns
+        # FIXME: fix hard code and get method
+        if config[Config.EC2_MASTER_PARAMS.value]['AssociatedPublicIp'] == 'true':
+            return resource.get('MasterEc2InstancePublicIp')
+        return resource.get('MasterEc2InstancePrivateIp')
+
+    @staticmethod
+    def destroy_aws_cloud(config):
+        if config[Config.DEPLOY_PLATFORM.value] != 'ec2':
+            msg = f'Not supported platform: {config[Config.DEPLOY_PLATFORM.value]}.'
+            logger.error(msg)
+            raise Exception(msg)
+
+        AWS.terminate_ec2_cluster(config)
 
     @staticmethod
     def scale_worker_to_ec2(worker_num: int, config: dict):

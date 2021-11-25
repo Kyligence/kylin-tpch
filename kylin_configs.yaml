@@ -4,13 +4,17 @@ DEPLOY_KYLIN_VERSION: v4
 # deploy platform: current only support ec2
 DEPLOY_PLATFORM: ec2
 
-AWS_REGION:                                   # example: cn-northwest-1
+AWS_REGION: cn-northwest-1                                   # example: cn-northwest-1
 
 # Dangerous Params
-ALWAYS_DESTROY_ALL: false                     # if set to false means that vpc for cluster always retain
+ALWAYS_DESTROY_ALL: true                     # if set to false means that vpc for cluster always retain
 
-# For Debug
+# For Debug, null means that cluster on aws need to be created.
 CLOUD_ADDR:
+
+S3_FULL_BUCKET_PATH: &S3_FULL_PATH s3://xiaoxiang-yu/kylin-xtt
+S3_BUCKET_PATH: &S3_PATH /xiaoxiang-yu/kylin-xtt
+KeyName: &security_key kylin4-xtt-emr-5.33
 
 # Stack Names
 # Note: if need to change stack names please change it in ../utils.py too.
@@ -31,18 +35,18 @@ EC2_DISTRIBUTION_PARAMS:
   # Note: params details check in related yaml file
   PublicSubnetID:
   SecurityGroupID:
-  EMREc2KeyName:
+  EMREc2KeyName: *security_key
   AssociatedPublicIp: 'true'
   # Note: this bucket must be created before run
-  BucketFullPath:                            # example: s3://xxx/kylin
-  BucketPath:                                # example: /xxx/kylin which matched above BucketFullPath suffix
+  BucketFullPath: *S3_FULL_PATH                           # example: s3://xxx/kylin
+  BucketPath: *S3_PATH                         # example: /xxx/kylin which matched above BucketFullPath suffix
 
   DistributionScriptFileName: prepare-ec2-env-for-distribution.sh
-  # Note: this role must be created before run raven
+  # Note: this role must be created before run deployment
   Ec2OperationRole: Ec2Kylin4BenchmarkRole
   Ec2Mode: test
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
-  Ec2InstanceTypeForDistribution: m5.xlarge
+  Ec2InstanceTypeForDistribution: m5.2xlarge
   Ec2VolumeSizeForDistributionNode: '20'
   Ec2VolumnTypeForDistributionNode: gp2
 EC2_MASTER_PARAMS:
@@ -61,14 +65,14 @@ EC2_MASTER_PARAMS:
   Ec2DbUser: 'root'
   Ec2DbPassword: '123456'
   # Note: this key pair must be created before run
-  EMREc2KeyName:
+  EMREc2KeyName: *security_key
   Ec2WaitingTime: '400'
   # Note: this bucket must be created before run
-  BucketFullPath:                           # example: s3://xxx/kylin
-  BucketPath:                               # example: /xxx/kylin which matched above BucketFullPath suffix
+  BucketFullPath: *S3_FULL_PATH                          # example: s3://xxx/kylin
+  BucketPath:  *S3_PATH                             # example: /xxx/kylin which matched above BucketFullPath suffix
 
   MasterScriptFileName: prepare-ec2-env-for-master.sh
-  Ec2Mode: product
+  Ec2Mode: test
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
   InstanceType: m5.2xlarge
   Ec2VolumnTypeForMasterNode: gp2
@@ -81,13 +85,13 @@ EC2_SLAVE_PARAMS:
   Ec2InstanceProfile:
   PublicSubnetID:
   SecurityGroupID:
-  EMREc2KeyName:
+  EMREc2KeyName: *security_key
   # set 'true' for test
   AssociatedPublicIp: 'true'
   WaitingTime: '400'
-  # Note: this bucket must be created before run raven
-  BucketFullPath:                           # example: s3://xxx/kylin
-  BucketPath:                               # example: /xxx/kylin which matched above BucketFullPath suffix
+  # Note: this bucket must be created before run deployment
+  BucketFullPath: *S3_FULL_PATH                          # example: s3://xxx/kylin
+  BucketPath: *S3_PATH                              # example: /xxx/kylin which matched above BucketFullPath suffix
   SlaveScriptFileName: prepare-ec2-env-for-slave.sh
   Ec2Mode: test
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
@@ -103,13 +107,13 @@ EC2_SCALE_SLAVE_PARAMS:
   PublicSubnetID:
   SecurityGroupID:
   WorkerNum:
-  EMREc2KeyName:
+  EMREc2KeyName: *security_key
   # set 'true' for test
   AssociatedPublicIp: 'true'
-  # Note: this bucket must be created before run raven
-  BucketFullPath:                           # example: s3://xxx/kylins3://xxx/kylin
-  BucketPath:                               # example: /xxx/kylin which matched above BucketFullPath suffix
-  ScriptFileName: prepare-client-for-raven.sh
+  # Note: this bucket must be created before run deployment
+  BucketFullPath: *S3_FULL_PATH                          # example: s3://xxx/kylins3://xxx/kylin
+  BucketPath: *S3_PATH                            # example: /xxx/kylin which matched above BucketFullPath suffix
+  ScriptFileName: prepare-ec2-env-for-slave.sh
   Ec2Mode: test
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
   InstanceType: m5.2xlarge

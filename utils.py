@@ -40,40 +40,12 @@ slave_from_master = {
     'Ec2InstanceProfile': 'MasterEc2InstanceProfileId',
 }
 
-# =========== emr for kylin4 ============
-vpc_to_emr_for_kylin4 = {
-    'Subnet01ID': 'SubnetId',
-    'SecurityGroupId': 'EmrSecurityGroupId',
-}
-
-emr_from_vpc_for_kylin4 = {
-    'SubnetId': 'Subnet01ID',
-    'EmrSecurityGroupId': 'SecurityGroupId'
-}
-
-emr_to_step_for_kylin4 = {
-    'ClusterId': 'EMRClusterId'
-}
-
-step_from_emr_for_kylin4 = {
-    'EMRClusterId': 'ClusterId'
-}
-
 step_for_ec2_to_scale = {
     'MasterNodeHost': 'MasterEc2InstancePrivateIp',
     'PublicSubnetID': 'MasterSubnetIdDependsOnDNode',
     'SecurityGroupID': 'MasterSecurityGroupIdDependsOnDNode',
     'Ec2InstanceProfile': 'MasterEc2InstanceProfileId',
 }
-
-step_for_raven_client = {
-    'MasterNodeHost': 'MasterEc2InstancePrivateIp',
-    'PublicSubnetID': 'MasterSubnetIdDependsOnDNode',
-    'SecurityGroupID': 'MasterSecurityGroupIdDependsOnDNode',
-    'Ec2InstanceProfile': 'MasterEc2InstanceProfileId',
-}
-# =========== emr for kylin3 ==============
-# TODO: fill this
 
 # =========== util map ============
 stack_to_map = {

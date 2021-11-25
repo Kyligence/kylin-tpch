@@ -4,7 +4,6 @@ from enum import Enum
 class File(Enum):
     VPC_YAML = 'ec2_or_emr_vpc.yaml'
     DISTRIBUTION_YAML = 'ec2-cluster-distribution.yaml'
-    RAVEN_CLIENT_YAML = 'raven-client.yaml'
     # master yaml and slave yaml already contain the kylin4 and other needed services installed and run
     MASTER_YAML = 'ec2-cluster-master.yaml'
     SLAVE_YAML = 'ec2-cluster-slave.yaml'

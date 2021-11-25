@@ -404,48 +404,6 @@ function start_hive() {
   logging info "Hive was logging in $HIVE_HOME/logs, you can check ..."
 }
 
-function restore_tpch() {
-  if [[ ! -f ${HIVE_HOME}/tpch_load.sql ]]; then
-    logging warn "Current tpch sql file not exists, download it ..."
-    aws s3 cp ${PATH_TO_BUCKET}/scripts/tpch_load.sql ${HIVE_HOME} --region ${CURRENT_REGION}
-  fi
-  if [[ ! -f ${HOME_DIR}/.inited_tpch ]]; then
-    logging info "Init tpch data ..."
-    hive -f ${HIVE_HOME}/tpch_load.sql -d DB=${TPCH_DATABASE} -d LOCATION=${TPCH_DATABASE_TO_BUCKET}
-    if [[ $? -ne 0 ]]; then
-      logging error "Hive init tpch data failed, please check ..."
-    else
-      logging info "Hive init tpch data successfully."
-      touch ${HOME_DIR}/.inited_tpch
-    fi
-  else
-    logging warn "tpch data already inited ..."
-  fi
-
-  logging info "Import kylin model for tpch data ..."
-  if [[ ! -f ${HOME_DIR}/tpch-meta.tar.gz ]]; then
-    logging warn "Kylin tpch meta not exists, download it ..."
-    aws s3 cp ${PATH_TO_BUCKET}/tar/tpch-meta.tar.gz ${HOME_DIR} --region ${CURRENT_REGION}
-  fi
-
-  if [[ ! -d ${HOME_DIR}/tpch-meta ]]; then
-    logging warn "Kylin tpch meta dir not exists, download it ..."
-    tar -zxf ${HOME_DIR}/tpch-meta.tar.gz
-  fi
-
-  if [[ ! -f ${HOME_DIR}/.init_kylin_tpch_model ]]; then
-    logging info "Init Kylin tpch data for kylin ..."
-    ${KYLIN_HOME}/bin/metastore.sh restore ${HOME_DIR}/tpch-meta
-    if [[ $? -ne 0 ]]; then
-      logging error "Import Kylin tpch model failed, please check ..."
-      exist 0
-    else
-      logging info "Import Kylin tpch model successfully."
-      touch ${HOME_DIR}/.init_kylin_tpch_model
-    fi
-  fi
-}
-
 function prepare_spark() {
   if [[ -f ${HOME_DIR}/.prepared_spark ]]; then
     logging warn "Spark already prepared, enjoy it."
@@ -742,10 +700,6 @@ function start_services_on_master() {
   sample_for_kylin
   start_kylin
   after_start_kylin
-
-  #init tpch data in hive
-  restore_tpch
-
   restart_kylin
 }
 

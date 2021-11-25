@@ -268,11 +268,6 @@ function prepare_mysql() {
         fi
         sudo rpm -ivh mysql57-community-release-el7-8.noarch.rpm
         sudo yum install mysql -y
-#    if [[ ! -f ${HOME_DIR}/${MYSQL_RPM} ]]; then
-#      logging info "Downloading ${MYSQL_RPM} ..."
-#      aws s3 cp ${PATH_TO_BUCKET}/tar/${MYSQL_RPM} ${HOME_DIR} --region ${CURRENT_REGION}
-#    fi
-#    sudo rpm -ivh ${HOME_DIR}/${MYSQL_RPM}
     touch ${HOME_DIR}/.prepared_mysql_server
   else
     logging info "mysql server was installed, skip install it ..."
@@ -292,7 +287,7 @@ function prepare_metadata() {
 
   logging info "Restoring metadata to mysql ..."
   # default user is root !
-  mysql -h$(hostname -i) -u$root -p${DATABASE_PASSWORD} <${HOME_DIR}/${METADADA_FILE}
+  mysql -h$(hostname -i) -uroot -p${DATABASE_PASSWORD} <${HOME_DIR}/${METADADA_FILE}
   logging info "Restored metadata to mysql ..."
 }
 

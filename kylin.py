@@ -3,7 +3,7 @@ from constant.config import Config
 from instance import KylinInstance
 
 
-def launch_aws_kylin(config) -> KylinInstance:
+def launch_aws_kylin(config):
     cloud_addr = get_cloud_addr(config)
     kylin_mode = config[Config.EC2_MASTER_PARAMS.value]['Ec2KylinMode']
     # launch kylin
@@ -13,7 +13,6 @@ def launch_aws_kylin(config) -> KylinInstance:
         timeout=1800,
         check_times=10
     )
-    return kylin_instance
 
 
 def destroy_aws_kylin(config):
