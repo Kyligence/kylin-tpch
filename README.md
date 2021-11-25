@@ -1,4 +1,4 @@
-# How To deploy Kylin4 On EC2
+# How to deploy Kylin4 on EC2
 
 Target: deploy Kylin4 on Ec2 with Spark Standalone mode
 
@@ -6,7 +6,9 @@ Target: deploy Kylin4 on Ec2 with Spark Standalone mode
 
 ### 1. Clone or Download this repo
 
-### 2. Download Needed Package & Upload them to S3 Path which suffix is */tars, example: s3://xxx/kylin4/tars
+### 2. Download Packages & Upload them to S3 Path which suffix is */tars, example: s3://xxx/kylin/tars
+
+> Note: Download packages for decreasing time of installation.
 
 1. Download Kylin4 package by [official website](https://kylin.apache.org/download/)
 
@@ -22,18 +24,14 @@ Target: deploy Kylin4 on Ec2 with Spark Standalone mode
 
 > Note: if you download not match jdk version, please check the scripts/*.sh which variables about jdk!
 
-### 3. Check Kylin4 needed jars in ./backup/jars & Upload them to S3 Path which suffix is */jars, example: s3://xxx/kylin4/jars
+### 3. Check dependent jars of Kylin4 in ./backup/jars & Upload them to S3 Path which suffix is */jars, example: s3://xxx/kylin/jars
 
 Kylin4 needed extra jars
 
-- alluxio-2.6.1-client.jar
 - commons-configuration-1.3.jar
 - mysql-connector-java-5.1.40.jar
-- kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar
 
-### 4. Check needed deploy scripts in ./backup/scripts & Upload them to S3 Path which suffix is */scripts, example: s3://xxx/kylin4/scripts
-
-Deploy needed scripts
+### 4. Check needed deploy scripts in ./backup/scripts & Upload them to S3 Path which suffix is */scripts, example: s3://xxx/kylin/scripts
 
 - prepare-ec2-env-for-distribution.sh
 - prepare-ec2-env-for-master.sh
@@ -45,7 +43,7 @@ Configure parameters in ./kylin_configs.yaml
 
 ### 6. Initialize needed IAM role and Used User which have access to aws
 
-> Note: if IAM role has create, then set the role name to cloudformation_templates/ec2-cluster-distribution.yaml's `Ec2OperationRole`
+> Note: if IAM role has created, then set the role name to cloudformation_templates/ec2-cluster-distribution.yaml's `Ec2OperationRole`
 
 ### 7. Initialize needed `SecurityGroupIngress` in cloudformation_templates/ec2_or_emr_vpc.yaml
 
@@ -63,4 +61,4 @@ Configure parameters in ./kylin_configs.yaml
 
 > Note: Use `aws configure` on terminal
 
-3. Use `python ./deploy.py --type [deploy|destroy|scale-up|scale-down]` to deploy cluster or destroy cluster or scale-up one node or scale-down one node.
+3. Use `python ./deploy.py --type [deploy|destroy]` to deploy or destroy cluster.

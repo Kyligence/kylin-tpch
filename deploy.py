@@ -19,6 +19,7 @@ if __name__ == '__main__':
     config.fileConfig('logging.ini')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--type", required=False, action='store_true', default='destroy', dest='type')
+    parser.add_argument("--type", required=False, default='deploy', dest='type',
+                        help="Use 'deploy' to create a cluster or 'destroy' to delete cluster")
     args = parser.parse_args()
     deploy_on_aws(args.type)
