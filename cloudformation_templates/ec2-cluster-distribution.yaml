@@ -8,7 +8,6 @@ Parameters:
     Type: String
   EMREc2KeyName:
     Type: String
-    Default:
 
 #   Optional Parameters
   Ec2Mode:
@@ -25,18 +24,15 @@ Parameters:
       - true
   BucketFullPath:
     Type: String
-    Default:
     Description: example s3://xxx/kylin
   BucketPath:
     Type: String
-    Default:
     Description: example /xxx/kylin-xtt which Url without prefix s3:/
   DistributionScriptFileName:
     Type: String
     Default: prepare-ec2-env-for-distribution.sh
   Ec2OperationRole:
     Type: String
-    Default:
     Description: Should be created by pre-step, must not be null !
   Ec2InstanceTypeForDistribution:
     Description: EC2 instance type
@@ -44,7 +40,6 @@ Parameters:
     ConstraintDescription: must be a valid EC2 instance type.
     Default: m5.2xlarge
     AllowedValues:
-      - m5.xlarge
       - m5.2xlarge
       - m5.4xlarge
   Ec2InstanceTypeForDistributionForTest:

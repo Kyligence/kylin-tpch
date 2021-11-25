@@ -39,7 +39,6 @@ Parameters:
       - false
   EMREc2KeyName:
     Type: String
-    Default: kylin4-xtt-emr-5.33
   Ec2WaitingTime:
     Type: Number
     Default: 200
@@ -56,10 +55,8 @@ Parameters:
 #   Optional Parameters
   BucketFullPath:
     Type: String
-    Default: s3://xiaoxiang-yu/kylin-xtt
   BucketPath:
     Type: String
-    Default: /xiaoxiang-yu/kylin-xtt
     Description: Url without prefix s3:/
   MasterScriptFileName:
     Type: String

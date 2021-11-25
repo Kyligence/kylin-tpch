@@ -28,10 +28,6 @@ Parameters:
   PrivateSubnet02CidrBlock:
     Type: String
     Default: 10.1.3.0/24
-  BucketObject:
-    Type: String
-    Description: Resources to deploy kylin4 or kylin3, example s3://xxx/kylin
-    Default:
 
 Mappings:
   Region2Az:
@@ -52,7 +48,7 @@ Resources:
             - ''
             - - Kylin
               - !Ref KylinVersion
-              - EmrandEc2
+              - EmrOrEc2
               - Vpc
     DeletionPolicy: Delete
   Ec2OrEmrBenchMarkSubnet1:
@@ -216,6 +212,3 @@ Outputs:
   SecurityGroupId:
     Description: the id of security group
     Value: !Ref Ec2OrEmrBenchMarkSecurityGroup
-  BucketUrl:
-    Description: url for bucket
-    Value: !Ref BucketObject
