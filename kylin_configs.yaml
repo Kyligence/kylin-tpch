@@ -4,7 +4,7 @@ DEPLOY_KYLIN_VERSION: v4
 # deploy platform: current only support ec2
 DEPLOY_PLATFORM: ec2
 
-AWS_REGION: cn-northwest-1                                   # example: cn-northwest-1
+AWS_REGION: cn-northwest-1                   # example: cn-northwest-1
 
 # Dangerous Params
 ALWAYS_DESTROY_ALL: true                     # if set to false means that vpc for cluster always retain
@@ -12,8 +12,13 @@ ALWAYS_DESTROY_ALL: true                     # if set to false means that vpc fo
 # For Debug, null means that cluster on aws need to be created.
 CLOUD_ADDR:
 
+# example: s3://xxx/kylin
 S3_FULL_BUCKET_PATH: &S3_FULL_PATH s3://xxx/kylin
+
+# example: /xxx/kylin which matched above BucketFullPath suffix
 S3_BUCKET_PATH: &S3_PATH /xxx/kylin
+
+
 # Security key name must not be null
 KeyName: &security_key xxxx
 
@@ -28,6 +33,7 @@ SLAVE_SCALE_5_STACK: ec2-slave-05
 SLAVE_SCALE_6_STACK: ec2-slave-06
 
 #Backup Params
+## backup meta file to S3 bucket, must not be null
 BackupMetadataBucketFullPath:                 # example: s3://xxx/kylin/backup/
 
 # Params
@@ -39,8 +45,8 @@ EC2_DISTRIBUTION_PARAMS:
   EMREc2KeyName: *security_key
   AssociatedPublicIp: 'true'
   # Note: this bucket must be created before run
-  BucketFullPath: *S3_FULL_PATH                           # example: s3://xxx/kylin
-  BucketPath: *S3_PATH                         # example: /xxx/kylin which matched above BucketFullPath suffix
+  BucketFullPath: *S3_FULL_PATH
+  BucketPath: *S3_PATH
 
   DistributionScriptFileName: prepare-ec2-env-for-distribution.sh
   # Note: this role must be created before run deployment
@@ -69,8 +75,8 @@ EC2_MASTER_PARAMS:
   EMREc2KeyName: *security_key
   Ec2WaitingTime: '400'
   # Note: this bucket must be created before run
-  BucketFullPath: *S3_FULL_PATH                          # example: s3://xxx/kylin
-  BucketPath:  *S3_PATH                             # example: /xxx/kylin which matched above BucketFullPath suffix
+  BucketFullPath: *S3_FULL_PATH
+  BucketPath:  *S3_PATH
 
   MasterScriptFileName: prepare-ec2-env-for-master.sh
   Ec2Mode: test
@@ -91,32 +97,11 @@ EC2_SLAVE_PARAMS:
   AssociatedPublicIp: 'true'
   WaitingTime: '400'
   # Note: this bucket must be created before run deployment
-  BucketFullPath: *S3_FULL_PATH                          # example: s3://xxx/kylin
-  BucketPath: *S3_PATH                              # example: /xxx/kylin which matched above BucketFullPath suffix
+  BucketFullPath: *S3_FULL_PATH
+  BucketPath: *S3_PATH
   SlaveScriptFileName: prepare-ec2-env-for-slave.sh
   Ec2Mode: test
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
   InstanceType: m5.2xlarge
   Ec2VolumnTypeForSlaveNode: gp2
   Ec2VolumeSizeForSlaveNode: '50'
-
-EC2_SCALE_SLAVE_PARAMS:
-  # None value can be passed by the pre-step output, so params need to wait pre-step complete.
-  # Note: params details check in related yaml file
-  MasterNodeHost:
-  Ec2InstanceProfile:
-  PublicSubnetID:
-  SecurityGroupID:
-  WorkerNum:
-  EMREc2KeyName: *security_key
-  # set 'true' for test
-  AssociatedPublicIp: 'true'
-  # Note: this bucket must be created before run deployment
-  BucketFullPath: *S3_FULL_PATH                          # example: s3://xxx/kylins3://xxx/kylin
-  BucketPath: *S3_PATH                            # example: /xxx/kylin which matched above BucketFullPath suffix
-  ScriptFileName: prepare-ec2-env-for-slave.sh
-  Ec2Mode: test
-  # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
-  InstanceType: m5.2xlarge
-  Ec2VolumnTypeForSlaveNode: gp2
-  Ec2VolumeSizeForSlaveNode: '30'
