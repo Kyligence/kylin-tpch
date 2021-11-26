@@ -398,21 +398,3 @@ class AWS:
             raise Exception(msg)
 
         AWS.terminate_ec2_cluster(config)
-
-    @staticmethod
-    def scale_worker_to_ec2(worker_num: int, config: dict):
-        if config[Config.DEPLOY_PLATFORM.value] != 'ec2':
-            msg = f'Not supported platform: {config[Config.DEPLOY_PLATFORM.value]}.'
-            logger.error(msg)
-            raise Exception(msg)
-        cloud_instance = AWSInstance(config)
-        cloud_instance.scale_up_workers(worker_num)
-
-    @staticmethod
-    def scale_down_worker(worker_num: int, config: dict):
-        if config[Config.DEPLOY_PLATFORM.value] != 'ec2':
-            msg = f'Not supported platform: {config[Config.DEPLOY_PLATFORM.value]}.'
-            logger.error(msg)
-            raise Exception(msg)
-        cloud_instance = AWSInstance(config)
-        cloud_instance.scale_down_worker(worker_num)

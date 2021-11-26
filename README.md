@@ -1,12 +1,18 @@
 # How to deploy Kylin4 on EC2
 
-Target: deploy Kylin4 on Ec2 with Spark Standalone mode
+Target: 
+
+1. Deploy Kylin4 on Ec2 with Spark Standalone mode
+
+2. Removed the dependency of hadoop and start quickly
+
+3. Create a Kylin4 cluster on aws automatically in 10 minutes
 
 ## Prerequisite
 
 ##### I. Clone or Download this repo
 
-##### II. Download Packages & Upload them to S3 Path which suffix is */tars, example: `s3://xxx/kylin/tars`
+##### II. Download Packages & Upload them to S3 Path which suffix is */tar, example: `s3://xxx/kylin/tar`
 
 > Note: Download packages for decreasing time of installation.
 
@@ -24,6 +30,8 @@ Target: deploy Kylin4 on Ec2 with Spark Standalone mode
 
 > Note: if you download not match jdk version, please check the scripts/*.sh which variables about jdk!
 
+![tars](images/tars.png)
+
 ##### III. Check dependent jars of Kylin4 in `./backup/jars` & Upload them to S3 Path which suffix is */jars, example: `s3://xxx/kylin/jars`
 
 Kylin4 needed extra jars
@@ -31,11 +39,15 @@ Kylin4 needed extra jars
 - commons-configuration-1.3.jar
 - mysql-connector-java-5.1.40.jar
 
+![jars](images/jars.png)
+
 ##### IV. Check needed deploy scripts in `./backup/scripts` & Upload them to S3 Path which suffix is */scripts, example: `s3://xxx/kylin/scripts`
 
 - prepare-ec2-env-for-distribution.sh
 - prepare-ec2-env-for-master.sh
 - prepare-ec2-env-for-slave.sh
+
+![scripts](images/scripts.png)
 
 ##### V. Initialize `./kylin_configs.yaml`
 
@@ -49,16 +61,18 @@ Configure parameters in `./kylin_configs.yaml`
 
 ## Deploy
 
-1. cd /path/to/deploy-kylin-on-aws
+1. change path to `deploy-kylin-on-aws` directory
 
-2. make virtual env for this repo
+2. Make a virtual env for current repo
 
-> Note: 
->   1. Use `source ./venv/bin/activate` to activate virtual env
->   2. Use `pip install -r ./requirements.txt` to install dependencies
+    > Note: 
+    >  Use `source ./venv/bin/activate` to activate virtual env
+    >  Use `pip install -r ./requirements.txt` to install dependencies
 
-2. configure aws account which has the access to aws
+3. Configure an aws account which has the access to aws console
 
-> Note: Use `aws configure` on terminal
+    > Note: Use `aws configure` on terminal
 
-3. Use `python ./deploy.py --type [deploy|destroy]` to deploy or destroy cluster.
+4. Use `python ./deploy.py --type [deploy|destroy]` to deploy or destroy cluster.
+
+    > Note: Default Kylin4 Cluster is `all` mode, you can set `job` or `query` mode by setting param `Ec2KylinMode` in `kylin_configs.yaml`

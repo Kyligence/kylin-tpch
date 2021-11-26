@@ -12,9 +12,10 @@ ALWAYS_DESTROY_ALL: true                     # if set to false means that vpc fo
 # For Debug, null means that cluster on aws need to be created.
 CLOUD_ADDR:
 
-S3_FULL_BUCKET_PATH: &S3_FULL_PATH s3://xiaoxiang-yu/kylin-xtt
-S3_BUCKET_PATH: &S3_PATH /xiaoxiang-yu/kylin-xtt
-KeyName: &security_key kylin4-xtt-emr-5.33
+S3_FULL_BUCKET_PATH: &S3_FULL_PATH s3://xxx/kylin
+S3_BUCKET_PATH: &S3_PATH /xxx/kylin-xtt
+# Security key name must not be null
+KeyName: &security_key
 
 # Stack Names
 # Note: if need to change stack names please change it in ../utils.py too.
@@ -59,7 +60,7 @@ EC2_MASTER_PARAMS:
   SecurityGroupID:
 
   AssociatedPublicIp: 'true'
-  # Must be in [ all, job, query ], default is job for the timeline!!!
+  # Must be in [ all, job, query ]
   Ec2KylinMode: all
 
   Ec2DbUser: 'root'
