@@ -13,9 +13,9 @@ ALWAYS_DESTROY_ALL: true                     # if set to false means that vpc fo
 CLOUD_ADDR:
 
 S3_FULL_BUCKET_PATH: &S3_FULL_PATH s3://xxx/kylin
-S3_BUCKET_PATH: &S3_PATH /xxx/kylin-xtt
+S3_BUCKET_PATH: &S3_PATH /xxx/kylin
 # Security key name must not be null
-KeyName: &security_key
+KeyName: &security_key xxxx
 
 # Stack Names
 # Note: if need to change stack names please change it in ../utils.py too.
