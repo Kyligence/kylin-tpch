@@ -53,6 +53,30 @@ Kylin4 needed extra jars
 
 Configure parameters in `./kylin_configs.yaml`
 
+> Note: 
+>   this step is important.  
+>   If you want to change instance type/volume type/volume size for nodes, please change `Ec2Mode` from `test` to `product` in [`EC2_DISTRIBUTION_PARAMS`,`EC2_MASTER_PARAMS`,`EC2_SLAVE_PARAMS`].
+>   If you don't change `EC2Mode` from `test` to `product` then cluster will be created in default configuration.
+
+1. Change `Ec2InstanceTypeForDistribution` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change instance type of Distribution Node.
+
+2. Change `Ec2VolumnTypeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume type of Distribution Node.
+
+3. Change `Ec2VolumeSizeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume size of Distribution Node.
+
+4. Change `InstanceType` type in `EC2_MASTER_PARAMS` to what you want if you want to change instance type of Master Node.
+
+5. Change `Ec2VolumnTypeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume type of Master Node.
+
+6. Change `Ec2VolumeSizeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume size of Master Node.
+
+7. Change `InstanceType` type in `EC2_SLAVE_PARAMS` to what you want if you want to change instance type of Slave Node.
+
+8. Change `Ec2VolumnTypeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume type of Slave Node.
+
+9. Change `Ec2VolumeSizeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume size of Slave Node.
+
+
 ##### VI. Initialize needed IAM role and Used User which have access to aws
 
 > Note: if IAM role has created, then set the role name to `cloudformation_templates/ec2-cluster-distribution.yaml`'s `Ec2OperationRole`
@@ -61,7 +85,7 @@ Configure parameters in `./kylin_configs.yaml`
 
 ## Deploy
 
-1. change path to `deploy-kylin-on-aws` directory
+1. Change path to `deploy-kylin-on-aws` directory
 
 2. Make a virtual env for current repo
 
