@@ -6,7 +6,7 @@ Target:
 
 2. Removed the dependency of hadoop and start quickly
 
-3. Create a Kylin4 cluster on aws automatically in 10 minutes
+3. Create a Kylin4 cluster on aws in 10 minutes
 
 ## Prerequisite
 
