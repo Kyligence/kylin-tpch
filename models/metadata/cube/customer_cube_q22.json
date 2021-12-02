@@ -1,0 +1,15 @@
+{
+  "uuid" : "d748128c-f0c7-0fa6-248a-60d46224551c",
+  "last_modified" : 0,
+  "version" : "4.0.0.0",
+  "name" : "customer_cube_q22",
+  "owner" : null,
+  "descriptor" : "customer_cube_q22",
+  "display_name" : "customer_cube_q22",
+  "status" : "DISABLED",
+  "segments" : [],
+  "cuboid_bytes" : "eAGrVjJWsjI2MDQyNNJRMleyMrK0NDczrQUAOhUE+g==",
+  "cuboid_bytes_recommend" : null,
+  "cuboid_last_optimized" : 0,
+  "snapshots" : {}
+}

@@ -1,4 +1,4 @@
-# Run TPCH Benchmark on Apache Kylin
+# Run TPCH Benchmark on Apache Kylin 4
 
 This is a derived work from https://github.com/hortonworks/hive-testbench
 
@@ -20,14 +20,17 @@ This benchmark requires [Apache Kylin 2.0](http://kylin.apache.org/download/) or
        echo "use tpch_flat_orc_2; show tables;" | hive
        ```
 
-2. Import Kylin model
+2. Import Kylin 4 model
 
    - Get this repository.
      ```sh
      git clone https://github.com/Kyligence/kylin-tpch.git
+     
+     # switch to branch of "Kylin4"
+     git checkout Kylin4
      ```
 
-   - Make sure there is a running Kylin instance.
+   - Make sure there is a running Kylin 4 instance.
 
      ```sh
      export KYLIN_HOME=...
@@ -42,21 +45,41 @@ This benchmark requires [Apache Kylin 2.0](http://kylin.apache.org/download/) or
 
    - The script also creates a few simple views on top of the original TPCH tables to allow Kylin pre-calculate some complex measures. The resulted E-R model topology is identical to the original TPCH model.
 
-3. Build Kylin cube
+3. Build Kylin 4 cube
 
    -  In the Kylin web, click "System->Reload Metadata" to refresh the newly imported TPCH model.
 
-   -  Select project "tpch" and find the 4 cubes below.
-      - lineitem_cube
-      - partsupp_cube
-      - customer_cube
-      - customer_vorder_cube
+   -  Select project "tpch" and find the 24 cubes below. These cubes are already optimized for query of Kylin 4.
+      - lineitem_cube_q1
+      - partsupp_cube_q2
+      - lineitem_cube_q3
+      - lineitem_cube_q4
+      - lineitem_cube_q5
+      - lineitem_cube_q6
+      - lineitem_cube_q7
+      - lineitem_cube_q8
+      - lineitem_cube_q9
+      - lineitem_cube_q10
+      - lineitem_cube_q11
+      - lineitem_cube_q12
+      - customer_vorder_cube_q13
+      - lineitem_cube_q14
+      - lineitem_cube_q15
+      - partsupp_cube_q16
+      - lineitem_cube_q17
+      - lineitem_cube_q18
+      - lineitem_cube_q19
+      - lineitem_cube_q20
+      - partsupp_cube_q20
+      - lineitem_cube_q21
+      - customer_cube_q22
+      - customer_vorder_cube_q22
 
-   -  `lineitem_cube` and `partsupp_cube` together covers 20 TPCH queries out of the total 22. Besides, `customer_vorder_cube` is for query 13 and `customer_cube` is for query 22.
+   -  `lineitem_cube_*` and `partsupp_cube_*` together covers 20 TPCH queries out of the total 22. Besides, `customer_vorder_cube_q13` is for query 13, `customer_cube_q22` and `customer_vorder_cube_q22` are for query 22.
 
    -  Build all cubes within the year range from 1992 to 1998.
 
-   -  Verify by counting `v_lineitem` in Kylin. The row count must match the Hive table `lineitem`.
+   -  Verify by counting `v_lineitem` in Kylin 4. The row count must match the Hive table `lineitem`.
 
       ```sql
         select count(*) from v_lineitem

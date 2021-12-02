@@ -1,0 +1,14 @@
+{
+  "uuid" : "2dbb5f72-0775-a63e-73f6-80904ba92403",
+  "last_modified" : 0,
+  "version" : "4.0.0.0",
+  "name" : "lineitem_cube_q21",
+  "owner" : null,
+  "descriptor" : "lineitem_cube_q21",
+  "display_name" : "lineitem_cube_q21",
+  "status" : "DISABLED",
+  "segments" : [],
+  "cuboid_bytes" : "eAEVx7kRgEAMA8BeFF9gCz+yW2PoHdhsb0hYpnEUzYMm1qPKQ9KB83uZUSXW/8bm9FzjWc8LmjgM7g==",
+  "cuboid_bytes_recommend" : null,
+  "snapshots" : { }
+}

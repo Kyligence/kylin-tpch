@@ -1,0 +1,134 @@
+{
+  "uuid" : "9d187e60-9844-a3ef-bd56-e89c26ef2e4a",
+  "last_modified" : 1638168392271,
+  "version" : "2.0.0",
+  "name" : "lineitem_cube_q17",
+  "is_draft" : false,
+  "model_name" : "lineitem_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "L_PARTKEY",
+    "table" : "V_LINEITEM",
+    "column" : "L_PARTKEY",
+    "derived" : null
+  }, {
+    "name" : "L_QUANTITY",
+    "table" : "V_LINEITEM",
+    "column" : "L_QUANTITY",
+    "derived" : null
+  }, {
+    "name" : "P_PARTKEY",
+    "table" : "PART",
+    "column" : "P_PARTKEY",
+    "derived" : null
+  }, {
+    "name" : "P_BRAND",
+    "table" : "PART",
+    "column" : "P_BRAND",
+    "derived" : null
+  }, {
+    "name" : "P_CONTAINER",
+    "table" : "PART",
+    "column" : "P_CONTAINER",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "EXTENDEDPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_EXTENDEDPRICE"
+      },
+      "returntype" : "double"
+    }
+  }, {
+    "name" : "QUANTITY_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_QUANTITY"
+      },
+      "returntype" : "double"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "PART.P_PARTKEY",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_BRAND",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : true
+    }, {
+      "column" : "PART.P_CONTAINER",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_PARTKEY",
+      "encoding" : "integer:4",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_QUANTITY",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "EXTENDEDPRICE_SUM", "QUANTITY_SUM" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "PART.P_BRAND", "PART.P_CONTAINER", "V_LINEITEM.L_QUANTITY" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ "PART.P_BRAND", "PART.P_CONTAINER", "V_LINEITEM.L_QUANTITY" ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 2,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "8",
+    "kylin.storage.columnar.shard-rowcount" : "93750",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "75000",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "8",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "8388608"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

@@ -1,0 +1,170 @@
+{
+  "uuid" : "dce64131-5e92-4408-a9e7-60c4eab1afc5",
+  "last_modified" : 1638177837745,
+  "version" : "2.0.0",
+  "name" : "lineitem_cube_q21",
+  "is_draft" : false,
+  "model_name" : "lineitem_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "L_ORDERKEY",
+    "table" : "V_LINEITEM",
+    "column" : "L_ORDERKEY",
+    "derived" : null
+  }, {
+    "name" : "L_SUPPKEY",
+    "table" : "V_LINEITEM",
+    "column" : "L_SUPPKEY",
+    "derived" : null
+  }, {
+    "name" : "L_RECEIPTDELAYED",
+    "table" : "V_LINEITEM",
+    "column" : "L_RECEIPTDELAYED",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERKEY",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERKEY",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERSTATUS",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERSTATUS",
+    "derived" : null
+  }, {
+    "name" : "S_SUPPKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_SUPPKEY" ]
+  }, {
+    "name" : "S_NAME",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NAME" ]
+  }, {
+    "name" : "S_NATIONKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NATIONKEY" ]
+  }, {
+    "name" : "N_NAME",
+    "table" : "S_NATION",
+    "column" : "N_NAME",
+    "derived" : null
+  }, {
+    "name" : "N_NAME",
+    "table" : "C_NATION",
+    "column" : "N_NAME",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "COUNT_DISTINCT_SUPPKEY",
+    "function" : {
+      "expression" : "COUNT_DISTINCT",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_SUPPKEY"
+      },
+      "returntype" : "bitmap"
+    }
+  } ],
+  "dictionaries" : [ {
+    "column" : "V_LINEITEM.L_SUPPKEY",
+    "builder" : "org.apache.kylin.dict.GlobalDictionaryBuilder",
+    "cube" : null,
+    "model" : null
+  } ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_LINEITEM.L_ORDERKEY",
+      "encoding" : "integer:4",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_SUPPKEY",
+      "encoding" : "integer:4",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_RECEIPTDELAYED",
+      "encoding" : "boolean",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERSTATUS",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : true
+    }, {
+      "column" : "V_ORDERS.O_ORDERKEY",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "S_NATION.N_NAME",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "C_NATION.N_NAME",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_" ]
+      } ]
+    }, {
+      "name" : "F2",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "COUNT_DISTINCT_SUPPKEY" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "V_LINEITEM.L_ORDERKEY", "V_LINEITEM.L_RECEIPTDELAYED", "V_ORDERS.O_ORDERKEY" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ "V_LINEITEM.L_ORDERKEY", "V_ORDERS.O_ORDERKEY" ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 2,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "32",
+    "kylin.storage.columnar.shard-rowcount" : "3000000",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "3000000",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "32",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "33554432"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

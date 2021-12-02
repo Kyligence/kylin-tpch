@@ -1,8 +1,9 @@
 {
-  "uuid" : "eb05a6e7-cf1c-4867-8a72-58771875711d",
-  "last_modified" : 1482829201470,
+  "uuid" : "a8a7d4bf-20b2-ab77-bdd8-1355fc47f286",
+  "last_modified" : 1638168728516,
   "version" : "1.6.1",
-  "name" : "customer_cube",
+  "name" : "customer_cube_q22",
+  "is_draft" : false,
   "model_name" : "customer_model",
   "description" : "",
   "null_string" : null,
@@ -48,14 +49,17 @@
     "rowkey_columns" : [ {
       "column" : "CUSTOMER.C_CUSTKEY",
       "encoding" : "integer:4",
+      "encoding_version" : 1,
       "isShardBy" : false
     }, {
       "column" : "CUSTOMER.C_PHONE",
       "encoding" : "fixed_length:15",
-      "isShardBy" : false
+      "encoding_version" : 1,
+      "isShardBy" : true
     }, {
       "column" : "CUSTOMER.C_ACCTBAL",
       "encoding" : "dict",
+      "encoding_version" : 1,
       "isShardBy" : false
     } ]
   },
@@ -73,17 +77,29 @@
     "select_rule" : {
       "hierarchy_dims" : [ ],
       "mandatory_dims" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_PHONE", "CUSTOMER.C_ACCTBAL" ],
-      "joint_dims" : [ ]
+      "joint_dims" : [ ],
+      "dim_cap" : 1
     }
   } ],
   "notify_list" : [ ],
   "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
   "partition_date_start" : 0,
   "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
   "retention_range" : 0,
   "engine_type" : 2,
   "storage_type" : 2,
-  "override_kylin_properties" : { 
-     "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true"
-  }
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "8",
+    "kylin.storage.columnar.shard-rowcount" : "93750",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "75000",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "8",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "8388608"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
 }

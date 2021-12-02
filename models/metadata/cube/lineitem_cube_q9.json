@@ -1,0 +1,14 @@
+{
+  "uuid" : "b4ead192-1ab7-8e3b-c167-721bf34b2512",
+  "last_modified" : 0,
+  "version" : "4.0.0.0",
+  "name" : "lineitem_cube_q9",
+  "owner" : null,
+  "descriptor" : "lineitem_cube_q9",
+  "display_name" : "lineitem_cube_q9",
+  "status" : "DISABLED",
+  "segments" : [],
+  "cuboid_bytes" : "eAGrVjIyMDVWsjI2NTI2NzMysNRRMjQztgCKmBkYW1qaW5gb1QIAivYHqA==",
+  "cuboid_bytes_recommend" : null,
+  "snapshots" : { }
+}

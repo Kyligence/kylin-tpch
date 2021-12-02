@@ -3,40 +3,94 @@
   "last_modified" : 1480842250878,
   "version" : "1.6.1",
   "name" : "tpch",
-  "tables" : [ "TPCH_FLAT_ORC_2.V_ORDERS", 
-               "TPCH_FLAT_ORC_2.SUPPLIER", 
-               "TPCH_FLAT_ORC_2.PART", 
-               "TPCH_FLAT_ORC_2.NATION", 
-               "TPCH_FLAT_ORC_2.REGION", 
-               "TPCH_FLAT_ORC_2.CUSTOMER", 
-               "TPCH_FLAT_ORC_2.PARTSUPP", 
-               "TPCH_FLAT_ORC_2.V_LINEITEM", 
+  "tables" : [ "TPCH_FLAT_ORC_2.V_ORDERS",
+               "TPCH_FLAT_ORC_2.SUPPLIER",
+               "TPCH_FLAT_ORC_2.PART",
+               "TPCH_FLAT_ORC_2.NATION",
+               "TPCH_FLAT_ORC_2.REGION",
+               "TPCH_FLAT_ORC_2.CUSTOMER",
+               "TPCH_FLAT_ORC_2.PARTSUPP",
+               "TPCH_FLAT_ORC_2.V_LINEITEM",
                "TPCH_FLAT_ORC_2.V_PARTSUPP" ],
   "owner" : "ADMIN",
   "status" : "ENABLED",
   "create_time_utc" : 1480841193947,
   "last_update_time" : null,
   "description" : "",
-  "realizations" : [
-    {
-      "name": "lineitem_cube",
-      "type": "CUBE",
-      "realization": "lineitem_cube"
-    },
-    {
-      "name": "partsupp_cube",
-      "type": "CUBE",
-      "realization": "partsupp_cube"
-    }, 
-    {
-      "type" : "CUBE",
-      "realization" : "customer_vorder_cube"
-    }, 
-    {
-      "type" : "CUBE",
-      "realization" : "customer_cube"
-    }
-  ],
+  "realizations" : [ {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q1"
+  }, {
+    "type" : "CUBE",
+    "realization" : "partsupp_cube_q2"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q3"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q4"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q5"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q6"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q7"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q8"
+  },  {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q9"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q10"
+  }, {
+    "type" : "CUBE",
+    "realization" : "partsupp_cube_q11"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q12"
+  }, {
+    "type" : "CUBE",
+    "realization" : "customer_vorder_cube_q13"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q14"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q15"
+  }, {
+    "type" : "CUBE",
+    "realization" : "partsupp_cube_q16"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q17"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q18"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q19"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q20"
+  }, {
+    "type" : "CUBE",
+    "realization" : "partsupp_cube_q20"
+  }, {
+    "type" : "CUBE",
+    "realization" : "lineitem_cube_q21"
+  }, {
+    "type" : "CUBE",
+    "realization" : "customer_vorder_cube_q22"
+  }, {
+    "type" : "CUBE",
+    "realization" : "customer_cube_q22"
+  }],
   "models" : [ "lineitem_model", "partsupp_model", "customer_model", "customer_vorder_model" ],
-  "ext_filters" : [ ]
+  "ext_filters" : [ ],
+  "override_kylin_properties" : { }
 }
