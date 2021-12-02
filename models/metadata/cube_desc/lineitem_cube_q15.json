@@ -1,0 +1,114 @@
+{
+  "uuid" : "d0ddaaf5-859d-9ad3-1e05-722d0a15abb7",
+  "last_modified" : 1638242272578,
+  "version" : "2.0.0",
+  "name" : "lineitem_cube_q15",
+  "is_draft" : false,
+  "model_name" : "lineitem_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "L_SUPPKEY",
+    "table" : "V_LINEITEM",
+    "column" : "L_SUPPKEY",
+    "derived" : null
+  }, {
+    "name" : "L_SHIPDATE",
+    "table" : "V_LINEITEM",
+    "column" : "L_SHIPDATE",
+    "derived" : null
+  }, {
+    "name" : "S_SUPPKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_SUPPKEY" ]
+  }, {
+    "name" : "S_NAME",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NAME" ]
+  }, {
+    "name" : "S_ADDRESS",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_ADDRESS" ]
+  }, {
+    "name" : "S_PHONE",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_PHONE" ]
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "SALEPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_SALEPRICE"
+      },
+      "returntype" : "double"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_LINEITEM.L_SHIPDATE",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : true
+    }, {
+      "column" : "V_LINEITEM.L_SUPPKEY",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "SALEPRICE_SUM" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "V_LINEITEM.L_SHIPDATE" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 6,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "8",
+    "kylin.storage.columnar.shard-rowcount" : "93750",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "75000",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "8",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "8388608"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

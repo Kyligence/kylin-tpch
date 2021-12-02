@@ -1,0 +1,105 @@
+{
+  "uuid" : "a8a7d4bf-20b2-ab77-bdd8-1355fc47f286",
+  "last_modified" : 1638168728516,
+  "version" : "1.6.1",
+  "name" : "customer_cube_q22",
+  "is_draft" : false,
+  "model_name" : "customer_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "C_CUSTKEY",
+    "table" : "CUSTOMER",
+    "column" : "C_CUSTKEY",
+    "derived" : null
+  }, {
+    "name" : "C_PHONE",
+    "table" : "CUSTOMER",
+    "column" : "C_PHONE",
+    "derived" : null
+  }, {
+    "name" : "C_ACCTBAL",
+    "table" : "CUSTOMER",
+    "column" : "C_ACCTBAL",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "ACCBAL_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "CUSTOMER.C_ACCTBAL"
+      },
+      "returntype" : "double"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "CUSTOMER.C_CUSTKEY",
+      "encoding" : "integer:4",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "CUSTOMER.C_PHONE",
+      "encoding" : "fixed_length:15",
+      "encoding_version" : 1,
+      "isShardBy" : true
+    }, {
+      "column" : "CUSTOMER.C_ACCTBAL",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "ACCBAL_SUM" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_PHONE", "CUSTOMER.C_ACCTBAL" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ "CUSTOMER.C_CUSTKEY", "CUSTOMER.C_PHONE", "CUSTOMER.C_ACCTBAL" ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "partition_date_start" : 0,
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 6,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "8",
+    "kylin.storage.columnar.shard-rowcount" : "93750",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "75000",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "8",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "8388608"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

@@ -1,0 +1,145 @@
+{
+  "uuid" : "81bd78c8-c854-ca89-31eb-a59465acaf4e",
+  "last_modified" : 1638168367997,
+  "version" : "1.6.1",
+  "name" : "partsupp_cube_q16",
+  "is_draft" : false,
+  "model_name" : "partsupp_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "PS_PARTKEY",
+    "table" : "V_PARTSUPP",
+    "column" : "PS_PARTKEY",
+    "derived" : null
+  }, {
+    "name" : "PS_SUPPKEY",
+    "table" : "V_PARTSUPP",
+    "column" : "PS_SUPPKEY",
+    "derived" : null
+  }, {
+    "name" : "S_SUPPKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_SUPPKEY" ]
+  }, {
+    "name" : "S_COMMENT",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_COMMENT" ]
+  }, {
+    "name" : "P_BRAND",
+    "table" : "PART",
+    "column" : "P_BRAND",
+    "derived" : null
+  }, {
+    "name" : "P_TYPE",
+    "table" : "PART",
+    "column" : "P_TYPE",
+    "derived" : null
+  }, {
+    "name" : "P_SIZE",
+    "table" : "PART",
+    "column" : "P_SIZE",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "SUPPKEY_COUNT_DISTINCT",
+    "function" : {
+      "expression" : "COUNT_DISTINCT",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_PARTSUPP.PS_SUPPKEY"
+      },
+      "returntype" : "bitmap"
+    }
+  } ],
+  "dictionaries" : [ {
+    "column" : "V_PARTSUPP.PS_SUPPKEY",
+    "builder" : "org.apache.kylin.dict.GlobalDictionaryBuilder",
+    "cube" : null,
+    "model" : null
+  } ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_PARTSUPP.PS_PARTKEY",
+      "encoding" : "integer:8",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_PARTSUPP.PS_SUPPKEY",
+      "encoding" : "integer:4",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_BRAND",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "PART.P_TYPE",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : true
+    }, {
+      "column" : "PART.P_SIZE",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_" ]
+      } ]
+    }, {
+      "name" : "F2",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "SUPPKEY_COUNT_DISTINCT" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "V_PARTSUPP.PS_PARTKEY", "V_PARTSUPP.PS_SUPPKEY", "PART.P_BRAND", "PART.P_TYPE", "PART.P_SIZE" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 6,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "16",
+    "kylin.storage.columnar.shard-rowcount" : "187500",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "150000",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "16",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "16777216"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

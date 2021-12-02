@@ -1,0 +1,143 @@
+{
+  "uuid" : "524b83a3-c76c-b3d8-a3c2-b003cbdcef4a",
+  "last_modified" : 1636361342737,
+  "version" : "2.0.0",
+  "name" : "lineitem_cube_q1",
+  "is_draft" : false,
+  "model_name" : "lineitem_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "L_RETURNFLAG",
+    "table" : "V_LINEITEM",
+    "column" : "L_RETURNFLAG",
+    "derived" : null
+  }, {
+    "name" : "L_LINESTATUS",
+    "table" : "V_LINEITEM",
+    "column" : "L_LINESTATUS",
+    "derived" : null
+  }, {
+    "name" : "L_SHIPDATE",
+    "table" : "V_LINEITEM",
+    "column" : "L_SHIPDATE",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "EXTENDEDPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_EXTENDEDPRICE"
+      },
+      "returntype" : "double"
+    }
+  }, {
+    "name" : "SALEPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_SALEPRICE"
+      },
+      "returntype" : "double"
+    }
+  }, {
+    "name" : "TAXPRICE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_TAXPRICE"
+      },
+      "returntype" : "double"
+    }
+  }, {
+    "name" : "DISCOUNT_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_DISCOUNT"
+      },
+      "returntype" : "double"
+    }
+  }, {
+    "name" : "QUANTITY_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_LINEITEM.L_QUANTITY"
+      },
+      "returntype" : "double"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_LINEITEM.L_SHIPDATE",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : true
+    }, {
+      "column" : "V_LINEITEM.L_LINESTATUS",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_RETURNFLAG",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "EXTENDEDPRICE_SUM", "SALEPRICE_SUM", "TAXPRICE_SUM", "DISCOUNT_SUM", "QUANTITY_SUM" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "V_LINEITEM.L_SHIPDATE", "V_LINEITEM.L_LINESTATUS", "V_LINEITEM.L_RETURNFLAG" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 6,
+  "storage_type" : 4,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "128",
+    "kylin.storage.columnar.shard-rowcount" : "1500000",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "1200000",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "128"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

@@ -1,0 +1,114 @@
+{
+  "uuid" : "e8c973fe-b5ca-d837-612e-61cf94548da2",
+  "last_modified" : 1638347965408,
+  "version" : "2.0.0",
+  "name" : "lineitem_cube_q4",
+  "is_draft" : false,
+  "model_name" : "lineitem_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "L_ORDERKEY",
+    "table" : "V_LINEITEM",
+    "column" : "L_ORDERKEY",
+    "derived" : null
+  }, {
+    "name" : "L_RECEIPTDELAYED",
+    "table" : "V_LINEITEM",
+    "column" : "L_RECEIPTDELAYED",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERKEY",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERKEY",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERDATE",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERDATE",
+    "derived" : null
+  }, {
+    "name" : "O_ORDERPRIORITY",
+    "table" : "V_ORDERS",
+    "column" : "O_ORDERPRIORITY",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "V_ORDERS.O_ORDERDATE",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_ORDERKEY",
+      "encoding" : "integer:4",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_LINEITEM.L_RECEIPTDELAYED",
+      "encoding" : "boolean",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERPRIORITY",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_ORDERS.O_ORDERKEY",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "V_ORDERS.O_ORDERDATE", "V_LINEITEM.L_RECEIPTDELAYED", "V_ORDERS.O_ORDERPRIORITY" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 6,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "8",
+    "kylin.storage.columnar.shard-rowcount" : "93750",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "93750",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "8",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "8388608"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

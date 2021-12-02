@@ -1,0 +1,14 @@
+{
+  "uuid" : "eea93fb2-4481-f1c0-4b58-c1e4152f5b2a",
+  "last_modified" : 0,
+  "version" : "4.0.0.0",
+  "name" : "partsupp_cube_q11",
+  "owner" : null,
+  "descriptor" : "partsupp_cube_q11",
+  "display_name" : "partsupp_cube_q11",
+  "status" : "DISABLED",
+  "segments" : [],
+  "cuboid_bytes" : "eAGrVjJTsjI0NTA1NzbWUTIHss0MjQ3NLGoBRLwFYA==",
+  "cuboid_bytes_recommend" : null,
+  "snapshots" : { }
+}

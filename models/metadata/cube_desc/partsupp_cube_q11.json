@@ -1,0 +1,114 @@
+{
+  "uuid" : "60522879-ddb5-2d64-5c2e-910e7420e9ea",
+  "last_modified" : 1638241198800,
+  "version" : "1.6.1",
+  "name" : "partsupp_cube_q11",
+  "is_draft" : false,
+  "model_name" : "partsupp_model",
+  "description" : "",
+  "null_string" : null,
+  "dimensions" : [ {
+    "name" : "PS_PARTKEY",
+    "table" : "V_PARTSUPP",
+    "column" : "PS_PARTKEY",
+    "derived" : null
+  }, {
+    "name" : "PS_SUPPKEY",
+    "table" : "V_PARTSUPP",
+    "column" : "PS_SUPPKEY",
+    "derived" : null
+  }, {
+    "name" : "S_SUPPKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_SUPPKEY" ]
+  }, {
+    "name" : "S_NATIONKEY",
+    "table" : "SUPPLIER",
+    "column" : null,
+    "derived" : [ "S_NATIONKEY" ]
+  }, {
+    "name" : "N_NAME",
+    "table" : "NATION",
+    "column" : "N_NAME",
+    "derived" : null
+  } ],
+  "measures" : [ {
+    "name" : "_COUNT_",
+    "function" : {
+      "expression" : "COUNT",
+      "parameter" : {
+        "type" : "constant",
+        "value" : "1"
+      },
+      "returntype" : "bigint"
+    }
+  }, {
+    "name" : "PARTVALUE_SUM",
+    "function" : {
+      "expression" : "SUM",
+      "parameter" : {
+        "type" : "column",
+        "value" : "V_PARTSUPP.PS_PARTVALUE"
+      },
+      "returntype" : "double"
+    }
+  } ],
+  "dictionaries" : [ ],
+  "rowkey" : {
+    "rowkey_columns" : [ {
+      "column" : "NATION.N_NAME",
+      "encoding" : "dict",
+      "encoding_version" : 1,
+      "isShardBy" : true
+    }, {
+      "column" : "V_PARTSUPP.PS_PARTKEY",
+      "encoding" : "integer:8",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    }, {
+      "column" : "V_PARTSUPP.PS_SUPPKEY",
+      "encoding" : "integer:4",
+      "encoding_version" : 1,
+      "isShardBy" : false
+    } ]
+  },
+  "hbase_mapping" : {
+    "column_family" : [ {
+      "name" : "F1",
+      "columns" : [ {
+        "qualifier" : "M",
+        "measure_refs" : [ "_COUNT_", "PARTVALUE_SUM" ]
+      } ]
+    } ]
+  },
+  "aggregation_groups" : [ {
+    "includes" : [ "V_PARTSUPP.PS_PARTKEY", "V_PARTSUPP.PS_SUPPKEY", "NATION.N_NAME" ],
+    "select_rule" : {
+      "hierarchy_dims" : [ ],
+      "mandatory_dims" : [ ],
+      "joint_dims" : [ ],
+      "dim_cap" : 1
+    }
+  } ],
+  "notify_list" : [ ],
+  "status_need_notify" : [ "ERROR", "DISCARDED", "SUCCEED" ],
+  "auto_merge_time_ranges" : [ ],
+  "volatile_range" : 0,
+  "retention_range" : 0,
+  "engine_type" : 6,
+  "storage_type" : 2,
+  "override_kylin_properties" : {
+    "kylin.cube.aggrgroup.is-mandatory-only-valid" : "true",
+    "kylin.cube.cubeplanner.enabled" : "true",
+    "kylin.storage.columnar.shard-size-mb" : "4",
+    "kylin.storage.columnar.shard-rowcount" : "4194304",
+    "kylin.storage.columnar.shard-countdistinct-rowcount" : "4194304",
+    "kylin.storage.columnar.repartition-threshold-size-mb" : "4",
+    "kylin.engine.spark-conf.spark.hadoop.parquet.block.size" : "4194304"
+  },
+  "cuboid_black_list" : [ ],
+  "parent_forward" : 300,
+  "mandatory_dimension_set_list" : [ ],
+  "snapshot_table_desc_list" : [ ]
+}

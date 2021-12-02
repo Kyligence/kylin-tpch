@@ -1,0 +1,15 @@
+{
+  "uuid" : "7a71b981-f50a-1a36-88bf-0faa74829716",
+  "last_modified" : 0,
+  "version" : "4.0.0.0",
+  "name" : "customer_vorder_cube_q13",
+  "owner" : null,
+  "descriptor" : "customer_vorder_cube_q13",
+  "display_name" : "customer_vorder_cube_q13",
+  "status" : "DISABLED",
+  "segments" : [],
+  "cuboid_bytes" : "eAGrVjJWsjI2sDQ3NjesBQAVFAMY",
+  "cuboid_bytes_recommend" : null,
+  "cuboid_last_optimized" : 0,
+  "snapshots" : { }
+}
