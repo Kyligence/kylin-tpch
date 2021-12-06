@@ -2,7 +2,6 @@ import logging
 import os
 
 import yaml
-from collections import deque
 
 from kylin import (
     launch_aws_kylin,
@@ -25,7 +24,9 @@ class Engine:
     def launch_cluster(self):
         logger.info('Ec2: first launch Instances And Kylin nodes')
         launch_aws_kylin(self.config)
+        logger.info('Kylin Cluster already start successfully.')
 
     def destroy_cluster(self):
         logger.info('Ec2: destroy useless nodes')
         destroy_aws_kylin(self.config)
+        logger.info('Ec2: destroy useless nodes successfully.')

@@ -1,13 +1,10 @@
-import logging
-from logging import config
+import logging.config
 
 import argparse
-from engine import Engine
-
-logger = logging.getLogger(__name__)
 
 
 def deploy_on_aws(deploy_type: str) -> None:
+    from engine import Engine
     aws_engine = Engine()
     if deploy_type == 'deploy':
         aws_engine.launch_cluster()
@@ -16,10 +13,10 @@ def deploy_on_aws(deploy_type: str) -> None:
 
 
 if __name__ == '__main__':
-    config.fileConfig('logging.ini')
+    logging.config.fileConfig('logging.ini')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--type", required=False, default='deploy', dest='type',
+    parser.add_argument("--type", required=False, default='destroy', dest='type',
                         help="Use 'deploy' to create a cluster or 'destroy' to delete cluster")
     args = parser.parse_args()
     deploy_on_aws(args.type)

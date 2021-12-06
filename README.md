@@ -80,6 +80,8 @@ Configure parameters in `./kylin_configs.yaml`
 ##### VI. Initialize needed IAM role and Used User which have access to aws
 
 > Note: if IAM role has created, then set the role name to `cloudformation_templates/ec2-cluster-distribution.yaml`'s `Ec2OperationRole`
+> 
+> The working user who also must have the access to `S3`
 
 ##### VII. Initialize needed `SecurityGroupIngress` in `cloudformation_templates/ec2_or_emr_vpc.yaml`
 
