@@ -6,6 +6,9 @@ DEPLOY_PLATFORM: ec2
 
 AWS_REGION: cn-northwest-1                   # example: cn-northwest-1
 
+# Note: this role must be created before run deployment
+IAMRole: &IAM xxx
+
 # Dangerous Params
 ALWAYS_DESTROY_ALL: true                     # if set to false means that vpc for cluster always retain
 
@@ -50,7 +53,7 @@ EC2_DISTRIBUTION_PARAMS:
 
   DistributionScriptFileName: prepare-ec2-env-for-distribution.sh
   # Note: this role must be created before run deployment
-  Ec2OperationRole: Ec2Kylin4BenchmarkRole
+  Ec2OperationRole: *IAM
   Ec2Mode: test
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
   Ec2InstanceTypeForDistribution: m5.2xlarge
