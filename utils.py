@@ -61,5 +61,5 @@ stack_to_map = {
 
 def read_template(file_path: str):
     with open(file=file_path, mode='r') as template:
-        cf_template = template.read()
-    return cf_template
+        res_template = template.read()
+    return res_template

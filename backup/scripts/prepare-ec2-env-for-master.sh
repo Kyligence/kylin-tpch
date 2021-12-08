@@ -59,6 +59,7 @@ KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}.tar.gz
 SPARK_PACKAGE=spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION:0:3}.tgz
 HADOOP_PACKAGE=hadoop-${HADOOP_VERSION}.tar.gz
 HIVE_PACKAGE=apache-hive-${HIVE_VERSION}-bin.tar.gz
+NODE_EXPORTER_PACKAGE=node_exporter-1.3.1.linux-amd64.tar.gz
 
 ### Parameter for DB
 CURRENT_HOST=$(hostname -i)
@@ -90,6 +91,9 @@ function init_env() {
   SPARK_HOME=${HADOOP_DIR}/spark
   OUT_LOG=${HOME_DIR}/shell.stdout
 
+  # extra prometheus env
+  NODE_EXPORTER_HOME=/home/ec2-user/node_exporter
+
   cat <<EOF >>~/.bash_profile
 ## Set env variables
 ### jdk env
@@ -102,6 +106,9 @@ export HADOOP_HOME=${HADOOP_HOME}
 
 ### hive env
 export HIVE_HOME=${HIVE_HOME}
+
+### prometheus related env
+export NODE_EXPORTER_HOME=${NODE_EXPORTER_HOME}
 
 ### export all path
 export PATH=$HIVE_HOME/bin:$HIVE_HOME/conf:${HADOOP_HOME}/bin:${JAVA_HOME}/bin:$PATH
@@ -664,6 +671,47 @@ function restart_kylin() {
   ${KYLIN_HOME}/bin/kylin.sh restart
 }
 
+function prepare_node_exporter() {
+  logging info "Preparing node_exporter ..."
+  if [[ -f ${HOME_DIR}/.prepared_node_exporter ]]; then
+      logging warn "NODE_EXPORTER already prepared, skip prepare ... "
+      return
+  fi
+
+  if [[ ! -f ${HOME_DIR}/${NODE_EXPORTER_PACKAGE} ]]; then
+      logging info "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} not downloaded, downloading it ..."
+      aws s3 cp ${PATH_TO_BUCKET}/tar/${NODE_EXPORTER_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
+  else
+      logging warn "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} already download, skip download it."
+  fi
+  touch ${HOME_DIR}/.prepared_prometheus
+  logging info "NODE_EXPORTER prepared ..."
+}
+
+function init_node_exporter() {
+  logging info "Initializing node_exporter ..."
+  if [[ -f ${HOME_DIR}/.inited_node_exporter ]]; then
+      logging warn "NODE_EXPORTER already inited, skip init ... "
+      return
+  fi
+
+  if [[ ! -f ${NODE_EXPORTER_HOME} ]]; then
+      logging info "NODE_EXPORTER home ${NODE_EXPORTER_HOME} not ready, decompressing ${NODE_EXPORTER_PACKAGE} ..."
+      tar -zxf ${HOME_DIR}/${NODE_EXPORTER_PACKAGE}
+      mv ${HOME_DIR}/${NODE_EXPORTER_PACKAGE%.tar.gz} ${NODE_EXPORTER_HOME}
+  else
+      logging warn "NODE_EXPORTER home ${PROMETHEUS_PACKAGE} already ready."
+  fi
+  touch ${HOME_DIR}/.inited_prometheus
+  logging info "NODE_EXPORTER inited ..."
+}
+
+function start_node_exporter() {
+    # NOTE: default node_exporter port 9100
+    logging info "Start node_exporter ..."
+    nohup ${NODE_EXPORTER_HOME}/node_exporter >> ${NODE_EXPORTER_HOME}/node.log 2>&1 &
+}
+
 function prepare_packages() {
   if [[ -f ${HOME_DIR}/.prepared_packages ]]; then
     logging warn "Packages already prepared, skip prepare ..."
@@ -672,6 +720,10 @@ function prepare_packages() {
 
   prepare_jdk
   init_jdk
+
+  # add extra monitor service
+  prepare_node_exporter
+  init_node_exporter
 
   prepare_hadoop
   init_hadoop
@@ -693,6 +745,9 @@ function prepare_packages() {
 }
 
 function start_services_on_master() {
+  # start node_exporter
+  start_node_exporter
+
   start_hive
   start_spark_master
 

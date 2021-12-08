@@ -1,7 +1,7 @@
 import logging
 import os
 import time
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 import boto3
 from botocore.exceptions import ClientError, WaiterError
@@ -26,7 +26,8 @@ class AWSInstance:
     def _init_ec2_env(self):
         self.ec2_client = boto3.client(Client.EC2.value, region_name=self.region)
         self.ssm_client = boto3.client('ssm', region_name=self.region)
-        self.yaml_path = os.path.join(os.path.dirname(__file__), 'cloudformation_templates')
+        self.cur_dir = os.path.dirname(__file__)
+        self.yaml_path = os.path.join(self.cur_dir, 'cloudformation_templates')
         self.create_complete_waiter = self.cf_client.get_waiter('stack_create_complete')
         self.delete_complete_waiter = self.cf_client.get_waiter('stack_delete_complete')
 
@@ -147,13 +148,14 @@ class AWSInstance:
         if stack_name != config[Config.DISTRIBUTION_STACK.value]:
             logger.warning(f"Only {config[Config.DISTRIBUTION_STACK.value]} should backup before terminate.")
             return
-        backup_command = 'mysqldump -h$(hostname -i) -uroot -p123456 --databases kylin hive ' \
-                         '--add-drop-database >  /home/ec2-user/metadata-backup.sql'
+        tn = time.time_ns()
+        backup_command = f'mysqldump -h$(hostname -i) -uroot -p123456 --databases kylin hive ' \
+                         f'--add-drop-database >  /home/ec2-user/metadata-backup-{tn}.sql'
         resource_type = 'Ec2InstanceIdOfDistributionNode'
         # NOTE: name_or_id must be instance id!
         instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
         self.exec_script_instance_and_return(name_or_id=instance_id, script=backup_command)
-        cp_to_s3_command = f"aws s3 cp /home/ec2-user/metadata-backup.sql {config['BackupMetadataBucketFullPath']} " \
+        cp_to_s3_command = f"aws s3 cp /home/ec2-user/metadata-backup-{tn}.sql {config['BackupMetadataBucketFullPath']} " \
                            f"--region {config['AWS_REGION']}"
         self.exec_script_instance_and_return(name_or_id=instance_id, script=cp_to_s3_command)
 
@@ -179,6 +181,72 @@ class AWSInstance:
     def delete_stack(self, stack_name: str) -> Dict:
         resp = self.cf_client.delete_stack(StackName=stack_name)
         return resp
+
+    def start_prometheus(self, stack_name: str) -> None:
+        if stack_name != self.config[Config.DISTRIBUTION_STACK.value]:
+            logger.warning(f"Only {self.config[Config.DISTRIBUTION_STACK.value]} has the prometheus server.")
+            return
+        self.refresh_prometheus_config(stack_name=stack_name)
+        self.start_prometheus_server(stack_name=stack_name)
+
+    def start_prometheus_server(self, stack_name: str) -> None:
+        start_command = 'nohup /home/ec2-user/prometheus/prometheus --config.file=/home/ec2-user/prometheus/prometheus.yml >> /home/ec2-user/prometheus/nohup.log 2>&1 &'
+        resource_type = 'Ec2InstanceIdOfDistributionNode'
+        # NOTE: name_or_id must be instance id!
+        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+        self.exec_script_instance_and_return(name_or_id=instance_id, script=start_command)
+
+    def stop_prometheus_server(self, stack_name: str) -> None:
+        stop_command = 'lsof -t -i:9090 | xargs kill -9'
+        resource_type = 'Ec2InstanceIdOfDistributionNode'
+        # NOTE: name_or_id must be instance id!
+        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+        self.exec_script_instance_and_return(name_or_id=instance_id, script=stop_command)
+
+    def restart_prometheus_server(self, stack_name: str) -> None:
+        self.stop_prometheus_server(stack_name=stack_name)
+        self.start_prometheus_server(stack_name=stack_name)
+
+    def refresh_prometheus_config(self, stack_name: str) -> None:
+        refresh_config_commands = self.refresh_prometheus_commands()
+        resource_type = 'Ec2InstanceIdOfDistributionNode'
+        # NOTE: name_or_id must be instance id!
+        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+        for command in refresh_config_commands:
+            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+
+    def refresh_prometheus_commands(self) -> List:
+        # TODO: fill all command for prometheus server config
+        params = self.prometheus_config()
+        # NOTE: the spaces in template is for prometheus config's indent
+        command_template = """echo '  - job_name: "{node}"\n    static_configs:\n    - targets: ["{host}:9100"]' >> /home/ec2-user/prometheus/prometheus.yml """
+        commands = [command_template.format(node=node, host=host) for node, host in params.items()]
+        return commands
+
+    def prometheus_config(self) -> Dict:
+        ips = self.get_all_node_ips()
+        params = ['distribution_node', 'master_node', 'slave01_node', 'slave02_node', 'slave03_node']
+        param_map = dict(zip(params, ips))
+        # TODO: fill all prometheus server config
+        return param_map
+
+    def get_all_node_ips(self) -> List:
+        res = []
+        distribution_private_ip = self.get_specify_resource_from_output(
+            self.config[Config.DISTRIBUTION_STACK.value], 'DistributionNodePrivateIp')
+        master_private_ip = self.get_specify_resource_from_output(
+            self.config[Config.MASTER_STACK.value], 'MasterEc2InstancePrivateIp'
+        )
+        slaves_private_ips = [
+            self.get_specify_resource_from_output(
+                self.config[Config.SLAVE_STACK.value], f'Slave0{i}Ec2InstancePrivateIp'
+            )
+            for i in range(1, 4)  # default slave nodes' num is 3
+        ]
+        res.append(distribution_private_ip)
+        res.append(master_private_ip)
+        res.extend(slaves_private_ips)
+        return res
 
     def get_specify_resource_from_output(self, stack_name: str, resource_type: str) -> str:
         output = self.get_stack_output(stack_name)
@@ -357,6 +425,8 @@ class AWS:
             cloud_instance.create_distribution_stack()
             cloud_instance.create_master_stack()
             cloud_instance.create_slave_stack()
+        # now start monitor of prometheus because of every node_exporter ips are known
+        cloud_instance.start_prometheus(config[Config.DISTRIBUTION_STACK.value])
         # return the master stack resources
         resources = cloud_instance.get_stack_output(config[Config.MASTER_STACK.value])
         return resources

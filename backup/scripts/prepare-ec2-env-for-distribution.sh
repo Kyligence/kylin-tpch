@@ -54,11 +54,13 @@ EC2_DEFAULT_USER=ec2-user
 ### Parameters for Spark and Kylin
 #### ${SPARK_VERSION:0:1} get 2 from 2.4.7
 ZOOKEEPER_VERSION=3.4.13
+GRAFANA_VERSION=8.2.6
 
 ### File name
 ZOOKEEPER_PACKAGE=zookeeper-${ZOOKEEPER_VERSION}.tar.gz
 METADADA_FILE=metadata-backup.sql
-MYSQL_RPM=mysql-community-server-5.7.35-1.el7.x86_64.rpm
+PROMETHEUS_PACKAGE=prometheus-2.31.1.linux-amd64.tar.gz
+NODE_EXPORTER_PACKAGE=node_exporter-1.3.1.linux-amd64.tar.gz
 
 ### Parameter for DB
 DATABASE_NAME=kylin
@@ -84,6 +86,10 @@ function init_env() {
   ZOOKEEPER_HOME=${HADOOP_DIR}/zookeeper
   OUT_LOG=${HOME_DIR}/shell.stdout
 
+  # extra prometheus env
+  PROMETHEUS_HOME=/home/ec2-user/prometheus
+  NODE_EXPORTER_HOME=/home/ec2-user/node_exporter
+
   cat <<EOF >>~/.bash_profile
 ## Set env variables
 ### jdk env
@@ -93,6 +99,10 @@ export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
 
 ### zookeeper env
 export ZOOKEEPER_HOME=${ZOOKEEPER_HOME}
+
+### prometheus related env
+export PROMETHEUS_HOME=${PROMETHEUS_HOME}
+export NODE_EXPORTER_HOME=${NODE_EXPORTER_HOME}
 
 ### export all path
 export PATH=${JAVA_HOME}/bin:${ZOOKEEPER_HOME}/bin:$PATH
@@ -263,11 +273,11 @@ function prepare_mysql() {
   # Note: don't need to start
   if [[ ! -f ${HOME_DIR}/.prepared_mysql_server ]]; then
     logging warn "mysql server not installed, install it now ..."
-        if [[ ! -f ${HOME_DIR}/mysql57-community-release-el7-8.noarch.rpm ]]; then
-            wget http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
-        fi
-        sudo rpm -ivh mysql57-community-release-el7-8.noarch.rpm
-        sudo yum install mysql -y
+    if [[ ! -f ${HOME_DIR}/mysql57-community-release-el7-8.noarch.rpm ]]; then
+        wget http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
+    fi
+    sudo rpm -ivh mysql57-community-release-el7-8.noarch.rpm
+    sudo yum install mysql -y
     touch ${HOME_DIR}/.prepared_mysql_server
   else
     logging info "mysql server was installed, skip install it ..."
@@ -277,7 +287,33 @@ function prepare_mysql() {
   logging info "Mysql is ready ..."
 }
 
+function prepare_grafana() {
+  logging info "Preparing grafana ..."
+  if [[ -f ${HOME_DIR}/.prepared_grafana ]]; then
+    logging warn "Grafana service already installed, check it."
+    return
+  fi
+
+  start_docker
+
+  if [[ $(sudo docker ps -q -f name=grafana-${GRAFANA_VERSION}) ]]; then
+    logging warn "Grafana-${GRAFANA_VERSION} already running, skip this ..."
+  else
+    # default user is root !!!
+    sudo docker run -d --name grafana-${GRAFANA_VERSION} --restart=always -p 3000:3000 grafana/grafana:${GRAFANA_VERSION}
+
+    if [[ $? -ne 0 ]]; then
+      logging error "Mysql start in docker was failed, please check ..."
+      exit 0
+    fi
+  fi
+  logging warn "touch ${HOME_DIR}/.prepared_grafana"
+  touch ${HOME_DIR}/.prepared_grafana
+  logging info "Grafana is ready ..."
+}
+
 function prepare_metadata() {
+  # NOTE: if you want to restore metadata, please move the metadata file which named `metadata_backup.sql` to ${PATH_TO_BUCKET}/backup/ec2/
   logging info "Check history metadata whether exists ..."
   aws s3 cp ${PATH_TO_BUCKET}/backup/ec2/${METADADA_FILE} ${HOME_DIR} --region ${CURRENT_REGION}
   if [[ $? -ne 0 ]]; then
@@ -368,6 +404,89 @@ function start_zookeeper() {
   logging info "Zookeeper started properly ..."
 }
 
+function prepare_prometheus() {
+  logging info "Preparing prometheus ..."
+  if [[ -f ${HOME_DIR}/.prepared_prometheus ]]; then
+      logging warn "Prometheus already prepared, skip prepare ... "
+      return
+  fi
+
+  if [[ ! -f ${HOME_DIR}/${PROMETHEUS_PACKAGE} ]]; then
+      logging info "Prometheus package ${PROMETHEUS_PACKAGE} not downloaded, downloading it ..."
+      aws s3 cp ${PATH_TO_BUCKET}/tar/${PROMETHEUS_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
+  else
+      logging warn "Prometheus package ${PROMETHEUS_PACKAGE} already download, skip download it."
+  fi
+  touch ${HOME_DIR}/.prepared_prometheus
+  logging info "Prometheus prepared ..."
+}
+
+function init_prometheus() {
+  logging info "Initializing prometheus ..."
+  if [[ -f ${HOME_DIR}/.inited_prometheus ]]; then
+      logging warn "Prometheus already inited, skip init ... "
+      return
+  fi
+
+  if [[ ! -f ${PROMETHEUS_HOME} ]]; then
+      logging info "Prometheus home ${PROMETHEUS_HOME} not ready, decompressing ${PROMETHEUS_PACKAGE} ..."
+      tar -zxf ${HOME_DIR}/${PROMETHEUS_PACKAGE}
+      mv ${HOME_DIR}/${PROMETHEUS_PACKAGE%.tar.gz} ${PROMETHEUS_HOME}
+  else
+      logging warn "Prometheus home ${PROMETHEUS_PACKAGE} already ready."
+  fi
+
+  if [[ ! -d ${PROMETHEUS_HOME}/data ]]; then
+    logging info "Prometheus data dir not exists, creating it ..."
+    mkdir -p ${PROMETHEUS_HOME}/data
+  fi
+
+  touch ${HOME_DIR}/.inited_prometheus
+  logging info "Prometheus inited ..."
+  # NOTE: prometheus server will start after node_exporter on every node started.
+}
+
+function prepare_node_exporter() {
+  logging info "Preparing node_exporter ..."
+  if [[ -f ${HOME_DIR}/.prepared_node_exporter ]]; then
+      logging warn "NODE_EXPORTER already prepared, skip prepare ... "
+      return
+  fi
+
+  if [[ ! -f ${HOME_DIR}/${NODE_EXPORTER_PACKAGE} ]]; then
+      logging info "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} not downloaded, downloading it ..."
+      aws s3 cp ${PATH_TO_BUCKET}/tar/${NODE_EXPORTER_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
+  else
+      logging warn "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} already download, skip download it."
+  fi
+  touch ${HOME_DIR}/.prepared_prometheus
+  logging info "NODE_EXPORTER prepared ..."
+}
+
+function init_node_exporter() {
+  logging info "Initializing node_exporter ..."
+  if [[ -f ${HOME_DIR}/.inited_node_exporter ]]; then
+      logging warn "NODE_EXPORTER already inited, skip init ... "
+      return
+  fi
+
+  if [[ ! -f ${NODE_EXPORTER_HOME} ]]; then
+      logging info "NODE_EXPORTER home ${NODE_EXPORTER_HOME} not ready, decompressing ${NODE_EXPORTER_PACKAGE} ..."
+      tar -zxf ${HOME_DIR}/${NODE_EXPORTER_PACKAGE}
+      mv ${HOME_DIR}/${NODE_EXPORTER_PACKAGE%.tar.gz} ${NODE_EXPORTER_HOME}
+  else
+      logging warn "NODE_EXPORTER home ${PROMETHEUS_PACKAGE} already ready."
+  fi
+  touch ${HOME_DIR}/.inited_prometheus
+  logging info "NODE_EXPORTER inited ..."
+}
+
+function start_node_exporter() {
+    # NOTE: default node_exporter port 9100
+    logging info "Start node_exporter ..."
+    nohup ${NODE_EXPORTER_HOME}/node_exporter >> ${NODE_EXPORTER_HOME}/node.log 2>&1 &
+}
+
 function prepare_packages() {
   if [[ -f ${HOME_DIR}/.prepared_packages ]]; then
     logging warn "Packages already prepared, skip prepare ..."
@@ -377,6 +496,13 @@ function prepare_packages() {
   prepare_jdk
   init_jdk
 
+  # add extra monitor service
+  prepare_prometheus
+  init_prometheus
+
+  prepare_node_exporter
+  init_node_exporter
+
   prepare_docker
   prepare_mysql
   prepare_metadata
@@ -384,12 +510,18 @@ function prepare_packages() {
   prepare_zookeeper
   init_zookeeper
 
+  # grafana will start at last
+  prepare_grafana
+
   touch ${HOME_DIR}/.prepared_packages
   logging info "All need packages are ready ..."
 }
 
 function start_services_on_other() {
   start_zookeeper
+  # start extra monitor service
+  # NOTE: prometheus server will start after all node_exporter on every node started.
+  start_node_exporter
 }
 
 function main() {
