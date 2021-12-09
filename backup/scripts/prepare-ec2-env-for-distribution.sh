@@ -138,7 +138,7 @@ fi
 
 while [[ $# != 0 ]]; do
   if [[ $1 == "--bucket-url" ]]; then
-    # url same as: /xiaoxiang-yu/kylin-xtt
+    # url same as: /xxx/kylin
     BUCKET_SUFFIX=$2
   elif [[ $1 == "--region" ]]; then
     CURRENT_REGION=$2

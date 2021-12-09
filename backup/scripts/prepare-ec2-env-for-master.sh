@@ -68,12 +68,7 @@ CURRENT_HOST=$(hostname -i)
 JDK_PACKAGE=jdk-8u301-linux-x64.tar.gz
 JDK_DECOMPRESS_NAME=jdk1.8.0_301
 
-### Parameters for S3
-S3_ENDPOINT=s3.cn-northwest-1.amazonaws.com.cn
-
 HOME_DIR=/home/ec2-user
-
-TPCH_DATABASE=tpch_flat_orc_100
 
 function init_env() {
   HADOOP_DIR=${HOME_DIR}/hadoop
@@ -129,7 +124,9 @@ if [[ ! -f ~/.inited_env ]]; then
 else
   logging warn "Env variables already inited, source it ..."
 fi
+# Init env variables
 source ~/.bash_profile
+
 exec 2>>${OUT_LOG}
 set -o pipefail
 # ================ Main Functions ======================
@@ -153,7 +150,7 @@ fi
 
 while [[ $# != 0 ]]; do
   if [[ $1 == "--bucket-url" ]]; then
-    # url same as: /xiaoxiang-yu/kylin-xtt
+    # url same as: /xxx/kylin
     BUCKET_SUFFIX=$2
   elif [[ $1 == "--region" ]]; then
     CURRENT_REGION=$2
@@ -177,12 +174,8 @@ while [[ $# != 0 ]]; do
   shift
 done
 
-#PATH_TO_BUCKET=s3://xiaoxiang-yu/kylin-xtt
-#CONFIG_PATH_TO_BUCKET=s3a://xiaoxiang-yu/kylin-xtt
-
 PATH_TO_BUCKET=s3:/${BUCKET_SUFFIX}
 CONFIG_PATH_TO_BUCKET=s3a:/${BUCKET_SUFFIX}
-TPCH_DATABASE_TO_BUCKET=s3a://xiaoxiang-yu/user/hive/warehouse/${TPCH_DATABASE}.db
 
 # Main Functions and Steps
 ## prepare jdk env
@@ -249,6 +242,15 @@ function prepare_hadoop() {
 }
 
 function init_hadoop() {
+  # match correct region endpoints for hadoop's core-site.xml
+  if [[ ${CURRENT_REGION} == "cn-northwest-1" ]]; then
+    S3_ENDPOINT=s3.cn-northwest-1.amazonaws.com.cn
+  elif [[ ${CURRENT_REGION} == "cn-north-1" ]]; then
+    S3_ENDPOINT=s3.cn-north-1.amazonaws.com.cn
+  else
+    S3_ENDPOINT=s3.${CURRENT_REGION}.amazonaws.com
+  fi
+
   if [[ -f ${HOME_DIR}/.inited_hadoop ]]; then
     logging warn "Hadoop already inited, skip init ..."
   else
@@ -575,7 +577,7 @@ kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
 ## Disable canary
 kylin.canary.sparder-context-canary-enabled=false
 ## Query Cache
-kylin.query.cache-enabled=false
+kylin.query.cache-enabled=true
 
 EOF
   elif [[ ${KYLIN_MODE} == "query" ]]; then
@@ -599,7 +601,7 @@ kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
 ## Disable canary
 kylin.canary.sparder-context-canary-enabled=false
 ## Query Cache
-kylin.query.cache-enabled=false
+kylin.query.cache-enabled=true
 EOF
 
   elif [[ ${KYLIN_MODE} == "job" ]]; then
@@ -674,15 +676,15 @@ function restart_kylin() {
 function prepare_node_exporter() {
   logging info "Preparing node_exporter ..."
   if [[ -f ${HOME_DIR}/.prepared_node_exporter ]]; then
-      logging warn "NODE_EXPORTER already prepared, skip prepare ... "
-      return
+    logging warn "NODE_EXPORTER already prepared, skip prepare ... "
+    return
   fi
 
   if [[ ! -f ${HOME_DIR}/${NODE_EXPORTER_PACKAGE} ]]; then
-      logging info "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} not downloaded, downloading it ..."
-      aws s3 cp ${PATH_TO_BUCKET}/tar/${NODE_EXPORTER_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
+    logging info "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} not downloaded, downloading it ..."
+    aws s3 cp ${PATH_TO_BUCKET}/tar/${NODE_EXPORTER_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
   else
-      logging warn "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} already download, skip download it."
+    logging warn "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} already download, skip download it."
   fi
   touch ${HOME_DIR}/.prepared_prometheus
   logging info "NODE_EXPORTER prepared ..."
@@ -691,25 +693,25 @@ function prepare_node_exporter() {
 function init_node_exporter() {
   logging info "Initializing node_exporter ..."
   if [[ -f ${HOME_DIR}/.inited_node_exporter ]]; then
-      logging warn "NODE_EXPORTER already inited, skip init ... "
-      return
+    logging warn "NODE_EXPORTER already inited, skip init ... "
+    return
   fi
 
   if [[ ! -f ${NODE_EXPORTER_HOME} ]]; then
-      logging info "NODE_EXPORTER home ${NODE_EXPORTER_HOME} not ready, decompressing ${NODE_EXPORTER_PACKAGE} ..."
-      tar -zxf ${HOME_DIR}/${NODE_EXPORTER_PACKAGE}
-      mv ${HOME_DIR}/${NODE_EXPORTER_PACKAGE%.tar.gz} ${NODE_EXPORTER_HOME}
+    logging info "NODE_EXPORTER home ${NODE_EXPORTER_HOME} not ready, decompressing ${NODE_EXPORTER_PACKAGE} ..."
+    tar -zxf ${HOME_DIR}/${NODE_EXPORTER_PACKAGE}
+    mv ${HOME_DIR}/${NODE_EXPORTER_PACKAGE%.tar.gz} ${NODE_EXPORTER_HOME}
   else
-      logging warn "NODE_EXPORTER home ${PROMETHEUS_PACKAGE} already ready."
+    logging warn "NODE_EXPORTER home ${PROMETHEUS_PACKAGE} already ready."
   fi
   touch ${HOME_DIR}/.inited_prometheus
   logging info "NODE_EXPORTER inited ..."
 }
 
 function start_node_exporter() {
-    # NOTE: default node_exporter port 9100
-    logging info "Start node_exporter ..."
-    nohup ${NODE_EXPORTER_HOME}/node_exporter >> ${NODE_EXPORTER_HOME}/node.log 2>&1 &
+  # NOTE: default node_exporter port 9100
+  logging info "Start node_exporter ..."
+  nohup ${NODE_EXPORTER_HOME}/node_exporter >> ${NODE_EXPORTER_HOME}/node.log 2>&1 &
 }
 
 function prepare_packages() {
@@ -727,7 +729,6 @@ function prepare_packages() {
 
   prepare_hadoop
   init_hadoop
-
   # TODO: fix this hard code sleep time
   # sleep time to ensure mysql service in distribution node is ready
   sleep ${WAITING_TIME}
