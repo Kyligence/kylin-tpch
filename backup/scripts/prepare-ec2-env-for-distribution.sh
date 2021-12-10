@@ -303,7 +303,7 @@ function prepare_grafana() {
     sudo docker run -d --name grafana-${GRAFANA_VERSION} --restart=always -p 3000:3000 grafana/grafana:${GRAFANA_VERSION}
 
     if [[ $? -ne 0 ]]; then
-      logging error "Mysql start in docker was failed, please check ..."
+      logging error "Grafana start in docker was failed, please check ..."
       exit 0
     fi
   fi
@@ -459,7 +459,7 @@ function prepare_node_exporter() {
   else
       logging warn "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} already download, skip download it."
   fi
-  touch ${HOME_DIR}/.prepared_prometheus
+  touch ${HOME_DIR}/.prepared_node_exporter
   logging info "NODE_EXPORTER prepared ..."
 }
 
@@ -477,7 +477,7 @@ function init_node_exporter() {
   else
       logging warn "NODE_EXPORTER home ${PROMETHEUS_PACKAGE} already ready."
   fi
-  touch ${HOME_DIR}/.inited_prometheus
+  touch ${HOME_DIR}/.inited_node_exporter
   logging info "NODE_EXPORTER inited ..."
 }
 

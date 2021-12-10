@@ -686,7 +686,7 @@ function prepare_node_exporter() {
   else
     logging warn "NODE_EXPORTER package ${NODE_EXPORTER_PACKAGE} already download, skip download it."
   fi
-  touch ${HOME_DIR}/.prepared_prometheus
+  touch ${HOME_DIR}/.prepared_node_exporter
   logging info "NODE_EXPORTER prepared ..."
 }
 
@@ -704,7 +704,7 @@ function init_node_exporter() {
   else
     logging warn "NODE_EXPORTER home ${PROMETHEUS_PACKAGE} already ready."
   fi
-  touch ${HOME_DIR}/.inited_prometheus
+  touch ${HOME_DIR}/.inited_node_exporter
   logging info "NODE_EXPORTER inited ..."
 }
 
@@ -726,6 +726,8 @@ function prepare_packages() {
   # add extra monitor service
   prepare_node_exporter
   init_node_exporter
+  # start node_exporter quickly.
+  start_node_exporter
 
   prepare_hadoop
   init_hadoop
@@ -746,9 +748,6 @@ function prepare_packages() {
 }
 
 function start_services_on_master() {
-  # start node_exporter
-  start_node_exporter
-
   start_hive
   start_spark_master
 

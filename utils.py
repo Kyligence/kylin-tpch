@@ -1,6 +1,8 @@
 """
 These mapping is for stack outputs params mapping to next-step stack inputs params
 """
+from typing import List, Dict, Tuple
+
 # ================ ec2 for kylin4 =====================
 vpc_to_ec2_distribution = {
     'Subnet02ID': 'PublicSubnetID',
@@ -53,10 +55,24 @@ stack_to_map = {
     'ec2-or-emr-vpc-stack': ec2_distribution_from_vpc,
     'ec2-distribution-stack': master_from_ec2_distribution,
     'ec2-master-stack': slave_from_master,
-    'ec2-slave-04': step_for_ec2_to_scale,
-    'ec2-slave-05': step_for_ec2_to_scale,
-    'ec2-slave-06': step_for_ec2_to_scale,
 }
+
+
+def expand_stack(scale_nodes: Tuple) -> Dict:
+    stack_keys = scaled_stacks(scale_nodes)
+    if not stack_keys:
+        return stack_to_map
+    scaled_map = {k: step_for_ec2_to_scale for k in stack_keys}
+    stack_to_map.update(scaled_map)
+    return stack_to_map
+
+
+def scaled_stacks(scale_nodes: Tuple) -> List:
+    if not scale_nodes:
+        return []
+
+    scaled_stack_names = [f'ec2-slave-{i}' for i in scale_nodes]
+    return scaled_stack_names
 
 
 def read_template(file_path: str):
