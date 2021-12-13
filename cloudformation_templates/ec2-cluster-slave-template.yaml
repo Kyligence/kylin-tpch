@@ -116,8 +116,6 @@ Resources:
         - !Ref 'AWS::Region'
         - HVMebs
       Tags:
-        - Key: Cost Center
-          Value: OS
         - Key: Project
           Value: Kylin4
         - Key: Name
