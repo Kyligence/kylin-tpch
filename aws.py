@@ -325,9 +325,10 @@ class AWSInstance:
                 self._stack_delete_complete(self.config[Config.DISTRIBUTION_STACK.value])
                 and self._stack_delete_complete(self.config[Config.MASTER_STACK.value])
                 and self._stack_delete_complete(self.config[Config.SLAVE_STACK.value]))
-        if deleted_cost_stacks and \
-                ((not self.config['ALWAYS_DESTROY_ALL'])
-                 or (self._stack_delete_complete(self.config[Config.VPC_STACK.value]))):
+        if not deleted_cost_stacks:
+            return False
+        if not self.config['ALWAYS_DESTROY_ALL'] \
+                or self._stack_delete_complete(self.config[Config.VPC_STACK.value]):
             return True
         return False
 

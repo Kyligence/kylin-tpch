@@ -498,11 +498,13 @@ function init_spark() {
   #Support local cache + soft affinity
   if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
     if [[ ! -f $SPARK_HOME/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar ]]; then
-      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $SPARK_HOME/jars/
+      logging info "Downloading kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar to $SPARK_HOME/jars/ ..."
+      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $SPARK_HOME/jars/ --region ${CURRENT_REGION}
     fi
 
     if [[ ! -f $SPARK_HOME/jars/alluxio-2.6.1-client.jar ]]; then
-      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $SPARK_HOME/jars/
+      logging info "Downloading alluxio-2.6.1-client.jar to $SPARK_HOME/jars/ ..."
+      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $SPARK_HOME/jars/ --region ${CURRENT_REGION}
     fi
   fi
 
@@ -576,11 +578,13 @@ function init_kylin() {
   #Support local cache + soft affinity
   if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
     if [[ ! -f $KYLIN_HOME/ext/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar ]]; then
-      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $KYLIN_HOME/ext/
+      logging info "Downloading kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar to $KYLIN_HOME/ext/ ..."
+      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $KYLIN_HOME/ext/ --region ${CURRENT_REGION}
     fi
 
     if [[ ! -f $KYLIN_HOME/ext/alluxio-2.6.1-client.jar ]]; then
-      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $KYLIN_HOME/ext/
+      logging info "Downloading alluxio-2.6.1-client.jar to $KYLIN_HOME/ext/ ..."
+      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $KYLIN_HOME/ext/ --region ${CURRENT_REGION}
     fi
   fi
 
