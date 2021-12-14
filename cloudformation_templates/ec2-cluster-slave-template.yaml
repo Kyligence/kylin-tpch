@@ -29,6 +29,12 @@ Parameters:
     Description: mark woker number for spark worker
 
   #   Optional Parameters
+  LocalCacheSoftAffinity:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
   Ec2Mode:
     Type: String
     Default: test
@@ -163,7 +169,7 @@ Resources:
               #!/bin/bash -xe
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
-              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode}
+              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
             - PrivateMasterHost: !Ref MasterNodeHost
               WorkerNum: !Ref WorkerNum
               PrivateBucketFullPath: !Ref BucketFullPath
@@ -172,6 +178,7 @@ Resources:
               PrivateRegion: !Ref AWS::Region
               PrivateWaitingTime: !Ref WaitingTime
               WorkerMode: !Ref Ec2Mode
+              PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
 
 Outputs:
   SlaveEc2InstanceId:

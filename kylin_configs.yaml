@@ -21,7 +21,6 @@ S3_FULL_BUCKET_PATH: &S3_FULL_PATH s3://xxx/kylin
 # example: /xxx/kylin which matched above BucketFullPath suffix
 S3_BUCKET_PATH: &S3_PATH /xxx/kylin
 
-
 # Security key name must not be null
 KeyName: &security_key xxxx
 
@@ -31,9 +30,15 @@ VPC_STACK: ec2-or-emr-vpc-stack
 DISTRIBUTION_STACK: ec2-distribution-stack
 MASTER_STACK: ec2-master-stack
 SLAVE_STACK: ec2-slave-stack
-SLAVE_SCALE_4_STACK: ec2-slave-04
-SLAVE_SCALE_5_STACK: ec2-slave-05
-SLAVE_SCALE_6_STACK: ec2-slave-06
+
+# Scale Nodes Nums, default num is 3.
+# Scale Nodes Range is (from, to) which last node num contain the 'to'.
+# Example: (4, 6) means that scale nodes will be [4, ,5, 6].
+SCALE_NODES: (4, 6)
+
+# Whether to use Local Cache + Soft Affinity
+# Default is false.
+USING_LOCALCACHE_SOFT_AFFINITY: &local_cache_soft_affinity false
 
 #Backup Params
 ## backup meta file to S3 bucket, must not be null
@@ -52,7 +57,6 @@ EC2_DISTRIBUTION_PARAMS:
   BucketPath: *S3_PATH
 
   DistributionScriptFileName: prepare-ec2-env-for-distribution.sh
-  # Note: this role must be created before run deployment
   Ec2OperationRole: *IAM
   Ec2Mode: test
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
@@ -87,6 +91,7 @@ EC2_MASTER_PARAMS:
   InstanceType: m5.2xlarge
   Ec2VolumnTypeForMasterNode: gp2
   Ec2VolumeSizeForMasterNode: '50'
+  LocalCacheSoftAffinity: *local_cache_soft_affinity
 
 EC2_SLAVE_PARAMS:
   # None value can be passed by the pre-step output, so params need to wait pre-step complete.
@@ -108,3 +113,27 @@ EC2_SLAVE_PARAMS:
   InstanceType: m5.2xlarge
   Ec2VolumnTypeForSlaveNode: gp2
   Ec2VolumeSizeForSlaveNode: '50'
+  LocalCacheSoftAffinity: *local_cache_soft_affinity
+
+EC2_SCALE_SLAVE_PARAMS:
+  # None value can be passed by the pre-step output, so params need to wait pre-step complete.
+  # Note: params details check in related yaml file
+  MasterNodeHost:
+  Ec2InstanceProfile:
+  PublicSubnetID:
+  SecurityGroupID:
+  WorkerNum:
+  WaitingTime: '100'
+  EMREc2KeyName: *security_key
+  # set 'true' for test
+  AssociatedPublicIp: 'true'
+  # Note: this bucket must be created before run raven
+  BucketFullPath: *S3_FULL_PATH
+  BucketPath: *S3_PATH
+  ScriptFileName: prepare-ec2-env-for-slave.sh
+  Ec2Mode: test
+  # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
+  InstanceType: m5.2xlarge
+  Ec2VolumnTypeForSlaveNode: gp2
+  Ec2VolumeSizeForSlaveNode: '50'
+  LocalCacheSoftAffinity: *local_cache_soft_affinity

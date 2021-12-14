@@ -45,6 +45,53 @@ function logging() {
 
 set +e
 
+function help() {
+  logging warn "Invalid input."
+  logging warn "Usage: ${BASH_SOURCE[0]}
+                    --bucket-url /path/to/bucket/without/prefix
+                    --region region-for-s3
+                    --db-host db-host-for-kylin
+                    --db-password db-password-for-kylin
+                    --db-user db-user-for-kylin
+                    --zookeeper-host zookeeper-host-for-kylin
+                    --kylin-mode mode-for-kylin[all|query|job]
+                    --waiting-time time-for-start-services
+                    --local-soft whether-to-use-local-cache+soft-affinity"
+  exit 0
+}
+
+if [[ $# -ne 18 ]]; then
+  help
+fi
+
+while [[ $# != 0 ]]; do
+  if [[ $1 == "--bucket-url" ]]; then
+    # url same as: /xxx/kylin
+    BUCKET_SUFFIX=$2
+  elif [[ $1 == "--region" ]]; then
+    CURRENT_REGION=$2
+  elif [[ $1 == "--db-host" ]]; then
+    DATABASE_HOST=$2
+  elif [[ $1 == "--db-password" ]]; then
+    DATABASE_PASSWORD=$2
+  elif [[ $1 == "--db-user" ]]; then
+    DATABASE_USER=$2
+  elif [[ $1 == "--zookeeper-host" ]]; then
+    ZOOKEEPER_HOST=$2
+  elif [[ $1 == "--kylin-mode" ]]; then
+    # kylin mode in [ 'all', 'query', 'job' ]
+    KYLIN_MODE=$2
+  elif [[ $1 == "--waiting-time" ]]; then
+    WAITING_TIME=$2
+  elif [[ $1 == "--local-soft" ]]; then
+    LOCAL_CACHE_SOFT_AFFINITY=$2
+  else
+    help
+  fi
+  shift
+  shift
+done
+
 # =============== Env Parameters =================
 # Prepare Steps
 ### Parameters for Spark and Kylin
@@ -54,8 +101,29 @@ SPARK_VERSION=3.1.1
 KYLIN_VERSION=4.0.0
 HIVE_VERSION=2.3.9
 
+LOCAL_CACHE_DIR=/home/ec2-user/ssd
+
 ### File name
-KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}.tar.gz
+if [[ $LOCAL_CACHE_SOFT_AFFINITY == "false" ]]; then
+  KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}.tar.gz
+  DECOMPRESSED_KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}
+else
+  KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}-soft.tar.gz
+  DECOMPRESSED_KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}-soft
+
+  # Prepared the local cache dir for local cache + soft affinity
+
+  if [[ ! -d ${LOCAL_CACHE_DIR} ]]; then
+      sudo mkdir -p ${LOCAL_CACHE_DIR}
+      sudo chmod -R 777 ${LOCAL_CACHE_DIR}
+  fi
+
+  if [[ ! -d ${LOCAL_CACHE_DIR}/alluxio-cache-driver ]]; then
+      sudo mkdir -p ${LOCAL_CACHE_DIR}/alluxio-cache-driver
+      sudo chmod -R 777 ${LOCAL_CACHE_DIR}/alluxio-cache-driver
+  fi
+
+fi
 SPARK_PACKAGE=spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION:0:3}.tgz
 HADOOP_PACKAGE=hadoop-${HADOOP_VERSION}.tar.gz
 HIVE_PACKAGE=apache-hive-${HIVE_VERSION}-bin.tar.gz
@@ -80,9 +148,8 @@ function init_env() {
   JRE_HOME=${JAVA_HOME}/jre
   HADOOP_HOME=${HADOOP_DIR}/hadoop-${HADOOP_VERSION}
   HIVE_HOME=${HADOOP_DIR}/hive
-  KYLIN_TPCH_HOME=${HOME_DIR}/kylin-tpch
 
-  KYLIN_HOME=${HOME_DIR}/apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}
+  KYLIN_HOME=${HOME_DIR}/${DECOMPRESSED_KYLIN_PACKAGE}
   SPARK_HOME=${HADOOP_DIR}/spark
   OUT_LOG=${HOME_DIR}/shell.stdout
 
@@ -113,7 +180,6 @@ export HOME_DIR=${HOME_DIR}
 export KYLIN_HOME=${KYLIN_HOME}
 export SPARK_HOME=${SPARK_HOME}
 export OUT_LOG=${OUT_LOG}
-export KYLIN_TPCH_HOME=${KYLIN_TPCH_HOME}
 EOF
 }
 
@@ -130,50 +196,6 @@ source ~/.bash_profile
 exec 2>>${OUT_LOG}
 set -o pipefail
 # ================ Main Functions ======================
-function help() {
-  logging warn "Invalid input."
-  logging warn "Usage: ${BASH_SOURCE[0]}
-                    --bucket-url /path/to/bucket/without/prefix
-                    --region region-for-s3
-                    --db-host db-host-for-kylin
-                    --db-password db-password-for-kylin
-                    --db-user db-user-for-kylin
-                    --zookeeper-host zookeeper-host-for-kylin
-                    --kylin-mode mode-for-kylin[all|query|job]
-                    --waiting-time time-for-start-services"
-  exit 0
-}
-
-if [[ $# -ne 16 ]]; then
-  help
-fi
-
-while [[ $# != 0 ]]; do
-  if [[ $1 == "--bucket-url" ]]; then
-    # url same as: /xxx/kylin
-    BUCKET_SUFFIX=$2
-  elif [[ $1 == "--region" ]]; then
-    CURRENT_REGION=$2
-  elif [[ $1 == "--db-host" ]]; then
-    DATABASE_HOST=$2
-  elif [[ $1 == "--db-password" ]]; then
-    DATABASE_PASSWORD=$2
-  elif [[ $1 == "--db-user" ]]; then
-    DATABASE_USER=$2
-  elif [[ $1 == "--zookeeper-host" ]]; then
-    ZOOKEEPER_HOST=$2
-  elif [[ $1 == "--kylin-mode" ]]; then
-    # kylin mode in [ 'all', 'query', 'job' ]
-    KYLIN_MODE=$2
-  elif [[ $1 == "--waiting-time" ]]; then
-    WAITING_TIME=$2
-  else
-    help
-  fi
-  shift
-  shift
-done
-
 PATH_TO_BUCKET=s3:/${BUCKET_SUFFIX}
 CONFIG_PATH_TO_BUCKET=s3a:/${BUCKET_SUFFIX}
 
@@ -473,6 +495,17 @@ function init_spark() {
     cp $HIVE_HOME/conf/hive-site.xml $SPARK_HOME/conf/
   fi
 
+  #Support local cache + soft affinity
+  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
+    if [[ ! -f $SPARK_HOME/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar ]]; then
+      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $SPARK_HOME/jars/
+    fi
+
+    if [[ ! -f $SPARK_HOME/jars/alluxio-2.6.1-client.jar ]]; then
+      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $SPARK_HOME/jars/
+    fi
+  fi
+
   logging info "Spark inited ..."
   touch ${HOME_DIR}/.inited_spark
   logging info "Spark is ready ..."
@@ -504,7 +537,7 @@ function prepare_kylin() {
     #      wget https://archive.apache.org/dist/kylin/apache-kylin-${KYLIN_VERSION}/${KYLIN_PACKAGE}
   fi
 
-  if [[ -d ${HOME_DIR}/apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1} ]]; then
+  if [[ -d ${HOME_DIR}/${DECOMPRESSED_KYLIN_PACKAGE} ]]; then
     logging warn "Kylin package already decompress, skip decompress ..."
   else
     logging warn "Kylin package decompressing ..."
@@ -538,6 +571,17 @@ function init_kylin() {
 
   if [[ ! -f $KYLIN_HOME/ext/log4j-1.2.17.jar ]]; then
     cp $HADOOP_HOME/share/hadoop/common/lib/log4j-1.2.17.jar $KYLIN_HOME/ext/
+  fi
+
+  #Support local cache + soft affinity
+  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
+    if [[ ! -f $KYLIN_HOME/ext/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar ]]; then
+      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $KYLIN_HOME/ext/
+    fi
+
+    if [[ ! -f $KYLIN_HOME/ext/alluxio-2.6.1-client.jar ]]; then
+      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $KYLIN_HOME/ext/
+    fi
   fi
 
   if [[ ${KYLIN_MODE} == "all" ]]; then
@@ -630,6 +674,42 @@ EOF
 
   fi
 
+  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]] && ( [[ ${KYLIN_MODE} == "all" ]] || [[ ${KYLIN_MODE} == "query" ]] ); then
+    cat <<EOF >> ${KYLIN_HOME}/conf/kylin.properties
+kylin.query.spark-conf.spark.executor.extraJavaOptions=-Dhdp.version=current -Dlog4j.configuration=spark-executor-log4j.properties -Dlog4j.debug -Dkylin.hdfs.working.dir=\${kylin.env.hdfs-working-dir} -Dkylin.metadata.identifier=\${kylin.metadata.url.identifier} -Dkylin.spark.category=sparder -Dkylin.spark.identifier={{APP_ID}} -Dalluxio.user.client.cache.dir=${LOCAL_CACHE_DIR}/alluxio-cache-{{APP_ID}}-{{EXECUTOR_ID}}
+
+kylin.query.spark-conf.spark.driver.extraJavaOptions=-Dhdp.version=current -Dalluxio.user.client.cache.dir=${LOCAL_CACHE_DIR}/alluxio-cache-driver
+
+kylin.query.spark-conf.spark.sql.sources.ignoreDataLocality=true
+kylin.query.spark-conf.spark.extraListeners=org.apache.kylin.softaffinity.scheduler.SoftAffinityListener
+kylin.query.spark-conf.spark.hadoop.spark.kylin.local-cache.enabled=true
+kylin.query.spark-conf.spark.kylin.soft-affinity.enabled=true
+kylin.query.spark-conf.spark.kylin.soft-affinity.replications.num=1
+kylin.query.spark-conf.spark.hadoop.io.file.buffer.size=524288
+kylin.query.spark-conf.spark.hadoop.fs.hdfs.impl=org.apache.kylin.cache.fs.kylin.KylinCacheFileSystem
+
+kylin.query.spark-conf.spark.hadoop.fs.s3.impl=org.apache.kylin.cache.fs.kylin.KylinCacheFileSystem
+kylin.query.spark-conf.spark.hadoop.fs.s3a.impl=org.apache.kylin.cache.fs.kylin.KylinCacheFileSystem
+
+kylin.query.spark-conf.spark.hadoop.fs.s3a.experimental.input.fadvise=random
+kylin.query.spark-conf.spark.hadoop.parquet.enable.summary-metadata=false
+kylin.query.spark-conf.spark.sql.parquet.mergeSchema=false
+kylin.query.spark-conf.spark.sql.hive.metastorePartitionPruning=true
+
+
+
+# LOCAL or BUFF
+kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.store.type=LOCAL
+kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.async.restore.enabled=true
+kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.async.write.enabled=true
+kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.async.write.threads=6
+kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.size=20GB
+kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.page.size=1MB
+kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.local.store.file.buckets=1000
+kylin.query.spark-conf.spark.hadoop.alluxio.user.update.file.accesstime.disabled=true
+EOF
+    fi
+
   logging info "Kylin already inited ..."
   touch ${HOME_DIR}/.inited_kylin
   logging info "Kylin is ready ..."
@@ -711,7 +791,7 @@ function init_node_exporter() {
 function start_node_exporter() {
   # NOTE: default node_exporter port 9100
   logging info "Start node_exporter ..."
-  nohup ${NODE_EXPORTER_HOME}/node_exporter >> ${NODE_EXPORTER_HOME}/node.log 2>&1 &
+  nohup ${NODE_EXPORTER_HOME}/node_exporter >>${NODE_EXPORTER_HOME}/node.log 2>&1 &
 }
 
 function prepare_packages() {
@@ -726,7 +806,7 @@ function prepare_packages() {
   # add extra monitor service
   prepare_node_exporter
   init_node_exporter
-  # start node_exporter quickly.
+  # start node_exporter quickly
   start_node_exporter
 
   prepare_hadoop

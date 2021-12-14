@@ -45,6 +45,45 @@ function logging() {
 
 set +e
 
+function help() {
+  logging warn "Invalid input."
+  logging warn "Usage: ${BASH_SOURCE[0]}
+                    --bucket-url /path/to/bucket
+                    --master-host host_ip
+                    --worker-number 1 (or 2 or 3 ....)
+                    --region region-for-s3
+                    --waiting-time time-for-start-services
+                    --mode cluster-mode-is-product-or-test
+                    --local-soft whether-to-use-local-cache+soft-affinity"
+  exit 0
+}
+
+if [[ $# -ne 14 ]]; then
+  help
+fi
+
+while [[ $# != 0 ]]; do
+  if [[ $1 == "--bucket-url" ]]; then
+    BUCKET_SUFFIX=$2
+  elif [[ $1 == "--master-host" ]]; then
+    MASTER_HOST=$2
+  elif [[ $1 == "--worker-number" ]]; then
+    WORKER=$2
+  elif [[ $1 == "--region" ]]; then
+      CURRENT_REGION=$2
+  elif [[ $1 == "--waiting-time" ]]; then
+      WAITING_TIME=$2
+  elif [[ $1 == "--mode" ]]; then
+      WORKER_MODE=$2
+  elif [[ $1 == "--local-soft" ]]; then
+    LOCAL_CACHE_SOFT_AFFINITY=$2
+  else
+    help
+  fi
+  shift
+  shift
+done
+
 # =============== Env Parameters =================
 # Prepare Steps
 ## Parameter
@@ -58,8 +97,29 @@ KYLIN_VERSION=4.0.0
 JDK_PACKAGE=jdk-8u301-linux-x64.tar.gz
 JDK_DECOMPRESS_NAME=jdk1.8.0_301
 
+LOCAL_CACHE_DIR=/home/ec2-user/ssd
+
 ### File name
-KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}.tar.gz
+if [[ $LOCAL_CACHE_SOFT_AFFINITY == "false" ]]; then
+  KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}.tar.gz
+  DECOMPRESSED_KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}
+else
+  KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}-soft.tar.gz
+  DECOMPRESSED_KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}-soft
+
+  # Prepared the local cache dir for local cache + soft affinity
+
+  if [[ ! -d ${LOCAL_CACHE_DIR} ]]; then
+      sudo mkdir -p ${LOCAL_CACHE_DIR}
+      sudo chmod -R 777 ${LOCAL_CACHE_DIR}
+  fi
+
+  if [[ ! -d ${LOCAL_CACHE_DIR}/alluxio-cache-driver ]]; then
+      sudo mkdir -p ${LOCAL_CACHE_DIR}/alluxio-cache-driver
+      sudo chmod -R 777 ${LOCAL_CACHE_DIR}/alluxio-cache-driver
+  fi
+fi
+
 SPARK_PACKAGE=spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION:0:3}.tgz
 HADOOP_PACKAGE=hadoop-${HADOOP_VERSION}.tar.gz
 NODE_EXPORTER_PACKAGE=node_exporter-1.3.1.linux-amd64.tar.gz
@@ -74,7 +134,7 @@ function init_env() {
 
     JAVA_HOME=/usr/local/java
     JRE_HOME=${JAVA_HOME}/jre
-    KYLIN_HOME=${HOME_DIR}/apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}
+    KYLIN_HOME=${HOME_DIR}/${DECOMPRESSED_KYLIN_PACKAGE}
     SPARK_HOME=${HADOOP_DIR}/spark
     OUT_LOG=${HOME_DIR}/shell.stdout
     HADOOP_HOME=${HADOOP_DIR}/hadoop-${HADOOP_VERSION}
@@ -115,38 +175,6 @@ source ~/.bash_profile
 exec 2>>${OUT_LOG}
 set -o pipefail
 # ================ Main Functions ======================
-function help() {
-  logging warn "Invalid input."
-  logging warn "Usage: ${BASH_SOURCE[0]}
-                    --bucket-url /path/to/bucket
-                    --master-host host_ip
-                    --worker-number 1 (or 2 or 3 ....)"
-  exit 0
-}
-
-if [[ $# -ne 12 ]]; then
-  help
-fi
-
-while [[ $# != 0 ]]; do
-  if [[ $1 == "--bucket-url" ]]; then
-    BUCKET_SUFFIX=$2
-  elif [[ $1 == "--master-host" ]]; then
-    MASTER_HOST=$2
-  elif [[ $1 == "--worker-number" ]]; then
-    WORKER=$2
-  elif [[ $1 == "--region" ]]; then
-      CURRENT_REGION=$2
-  elif [[ $1 == "--waiting-time" ]]; then
-      WAITING_TIME=$2
-  elif [[ $1 == "--mode" ]]; then
-      WORKER_MODE=$2
-  else
-    help
-  fi
-  shift
-  shift
-done
 
 PATH_TO_BUCKET=s3:/${BUCKET_SUFFIX}
 
@@ -277,6 +305,17 @@ function init_spark() {
     fi
   fi
 
+  #Support local cache + soft affinity
+  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
+    if [[ ! -f $SPARK_HOME/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar ]]; then
+      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $SPARK_HOME/jars/
+    fi
+
+    if [[ ! -f $SPARK_HOME/jars/alluxio-2.6.1-client.jar ]]; then
+      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $SPARK_HOME/jars/
+    fi
+  fi
+
   logging info "Spark inited ..."
   touch ${HOME_DIR}/.inited_spark
   logging info "Spark is ready ..."
@@ -318,7 +357,7 @@ function prepare_kylin() {
 #      wget https://archive.apache.org/dist/kylin/apache-kylin-${KYLIN_VERSION}/${KYLIN_PACKAGE}
   fi
 
-  if [[ -d ${HOME_DIR}/apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1} ]]; then
+  if [[ -d ${HOME_DIR}/${DECOMPRESSED_KYLIN_PACKAGE} ]]; then
       logging warn "Kylin package already decompress, skip decompress ..."
   else
       logging warn "Kylin package decompressing ..."
@@ -385,6 +424,8 @@ function prepare_packages() {
   # add extra monitor service
   prepare_node_exporter
   init_node_exporter
+  # start node_exporter quickly
+  start_node_exporter
 
   prepare_hadoop
 
@@ -398,9 +439,6 @@ function prepare_packages() {
 }
 
 function start_services_on_slave() {
-  # start node_exporter
-  start_node_exporter
-
   start_spark_worker
 }
 

@@ -53,6 +53,12 @@ Parameters:
     Description: set the flag for Mode, if not test use product's configuration
 
 #   Optional Parameters
+  LocalCacheSoftAffinity:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
   BucketFullPath:
     Type: String
   BucketPath:
@@ -185,7 +191,7 @@ Resources:
               #!/bin/bash -xe
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateMasterScriptFileName} . --region ${PrivateRegion}
-              bash ${PrivateMasterScriptFileName} --bucket-url ${PrivateBucketPath} --region ${PrivateRegion} --db-host ${PrivateDbHost} --db-password ${PrivateDbPass} --db-user ${PrivateDbUser}  --zookeeper-host ${PrivateZkHost} --kylin-mode ${PrivaiteKylinMode} --waiting-time ${PrivateWaitingTime}
+              bash ${PrivateMasterScriptFileName} --bucket-url ${PrivateBucketPath} --region ${PrivateRegion} --db-host ${PrivateDbHost} --db-password ${PrivateDbPass} --db-user ${PrivateDbUser}  --zookeeper-host ${PrivateZkHost} --kylin-mode ${PrivaiteKylinMode} --waiting-time ${PrivateWaitingTime} --local-soft ${PrivateLocalCacheSoftAffinity}
               echo " Master is ready ..."
             - PrivateBucketFullPath: !Ref BucketFullPath
               PrivateMasterScriptFileName: !Ref MasterScriptFileName
@@ -197,6 +203,7 @@ Resources:
               PrivateZkHost: !Ref Ec2ZookeeperkHost
               PrivaiteKylinMode: !Ref Ec2KylinMode
               PrivateWaitingTime: !Ref Ec2WaitingTime
+              PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
 
 Outputs:
   MasterEc2InstanceId:

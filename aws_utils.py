@@ -30,7 +30,7 @@ class EngineUtils:
 
     def scale_aws_worker(self, worker_nums: List, scale_type: str):
         logger.info(f'Current scaling {scale_type} node: {worker_nums}.')
-        # assert self.get_cloud_addr(), 'Master node must be ready.'
+        assert self.get_cloud_addr(), 'Master node must be ready.'
         self.aws_instance.scale_up_down(self.config, worker_nums, scale_type)
         self.aws_instance.after_scale(worker_nums, scale_type)
 

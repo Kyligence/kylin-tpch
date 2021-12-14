@@ -25,6 +25,12 @@ Parameters:
       - false
 
 #   Optional Parameters
+  LocalCacheSoftAffinity:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
   Ec2Mode:
     Type: String
     Default: test
@@ -170,7 +176,7 @@ Resources:
               #!/bin/bash -xe
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
-              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode}
+              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
             - PrivateMasterHost: !Ref MasterNodeHost
               WorkerNum: 1
               PrivateBucketFullPath: !Ref BucketFullPath
@@ -179,6 +185,7 @@ Resources:
               PrivateRegion: !Ref AWS::Region
               PrivateWaitingTime: !Ref WaitingTime
               WorkerMode: !Ref Ec2Mode
+              PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
   Ec2InstanceOfSlave02:
     Type: AWS::EC2::Instance
     DeletionPolicy: Delete
@@ -237,7 +244,7 @@ Resources:
               #!/bin/bash -xe
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
-              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode}
+              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
             - PrivateMasterHost: !Ref MasterNodeHost
               WorkerNum: 2
               PrivateBucketFullPath: !Ref BucketFullPath
@@ -246,6 +253,7 @@ Resources:
               PrivateRegion: !Ref AWS::Region
               PrivateWaitingTime: !Ref WaitingTime
               WorkerMode: !Ref Ec2Mode
+              PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
 
   Ec2InstanceOfSlave03:
     Type: AWS::EC2::Instance
@@ -305,7 +313,7 @@ Resources:
               #!/bin/bash -xe
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
-              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode}
+              bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
             - PrivateMasterHost: !Ref MasterNodeHost
               WorkerNum: 3
               PrivateBucketFullPath: !Ref BucketFullPath
@@ -314,6 +322,7 @@ Resources:
               PrivateRegion: !Ref AWS::Region
               PrivateWaitingTime: !Ref WaitingTime
               WorkerMode: !Ref Ec2Mode
+              PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
 
 
 Outputs:

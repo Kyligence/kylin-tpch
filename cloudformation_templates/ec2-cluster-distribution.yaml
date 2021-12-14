@@ -27,7 +27,7 @@ Parameters:
     Description: example s3://xxx/kylin
   BucketPath:
     Type: String
-    Description: example /xxx/kylin-xtt which Url without prefix s3:/
+    Description: example /xxx/kylin which Url without prefix s3:/
   DistributionScriptFileName:
     Type: String
     Default: prepare-ec2-env-for-distribution.sh
