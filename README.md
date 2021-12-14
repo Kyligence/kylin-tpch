@@ -41,9 +41,9 @@ Target:
 9. Download Kylin4 package with local cache + soft affinity feature by [public website](https://s3.cn-northwest-1.amazonaws.com.cn/asia.public.kyligence.io/kylin/apache-kylin-4.0.0-bin-spark3-soft.tar.gz)
 
 > Note: 
->   if you download not match jdk version, please check the scripts/*.sh which variables about jdk!
+>   If you download not match jdk version, please check the scripts/*.sh which variables about jdk!
 >
->   if you want to use Kylin4 with local cache + soft affinity feature, please download the `experimental` package above.
+>   If you want to use Kylin4 with local cache + soft affinity feature, please download the `experimental` package above.
 
 ![tars](images/tars.jpg)
 
@@ -73,9 +73,12 @@ Kylin4 needed extra jars
 Configure parameters in `./kylin_configs.yaml`
 
 > Note: 
->   this step is important.  
+>   This step is important.  
+>
 >   If you want to change instance type/volume type/volume size for nodes, please change `Ec2Mode` from `test` to `product` in [`EC2_DISTRIBUTION_PARAMS`,`EC2_MASTER_PARAMS`,`EC2_SLAVE_PARAMS`].
+>
 >   If you don't change `EC2Mode` from `test` to `product` then cluster will be created in default configuration.
+>
 >   If you don't change `USING_LOCALCACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature.
 
 1. Change `Ec2InstanceTypeForDistribution` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change instance type of Distribution Node.
@@ -99,7 +102,9 @@ Configure parameters in `./kylin_configs.yaml`
 
 ##### VI. Initialize needed IAM role and Used User which have access to aws
 
-> Note: if IAM role has created, then set the role name to `cloudformation_templates/ec2-cluster-distribution.yaml`'s `Ec2OperationRole`
+> Note: 
+>
+> If IAM role has created, then set the role name to `cloudformation_templates/ec2-cluster-distribution.yaml`'s `Ec2OperationRole`
 > 
 > The working user who also must have the access to `S3`
 
