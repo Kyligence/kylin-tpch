@@ -2,11 +2,17 @@
 
 Target: 
 
-1. Deploy Kylin4 on Ec2 with Spark Standalone mode
+1. Deploy Kylin4 on Ec2 with Spark Standalone mode.
 
-2. Removed the dependency of hadoop and start quickly
+2. Removed the dependency of hadoop and start quickly.
 
-3. Create a Kylin4 cluster on aws in 10 minutes
+3. Support to scale worker nodes for Spark standalone Cluster quickly and conveniently.
+
+4. Enhance performance for query in using  `Local Cache + Soft Affinity` feature (Experimental Feature), please check the [details](https://mp.weixin.qq.com/s/jEPvWJwSClQcMLPm64s4fQ).
+
+5. Support to monitor cluster status with prometheus server.
+
+6. Create a Kylin4 cluster on aws in 10 minutes.
 
 ## Prerequisite
 
@@ -26,18 +32,31 @@ Target:
 
 5. Download Zookeeper, [version 3.4.9](https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz)
 
-6. Download JDK, [version 1.8_301](https://www.oracle.com/java/technologies/downloads/#java8),
+6. Download JDK, [version 1.8_301](https://www.oracle.com/java/technologies/downloads/#java8)
 
-> Note: if you download not match jdk version, please check the scripts/*.sh which variables about jdk!
+7. Download Node Exporter, [version 1.3.1](https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz)
 
-![tars](images/tars.png)
+8. Download Prometheus Server, [version 2.31.1](https://github.com/prometheus/prometheus/releases/download/v2.31.1/prometheus-2.31.1.linux-amd64.tar.gz)
+
+9. Download Kylin4 package with local cache + soft affinity feature by [public website](https://s3.cn-northwest-1.amazonaws.com.cn/asia.public.kyligence.io/kylin/apache-kylin-4.0.0-bin-spark3-soft.tar.gz)
+
+> Note: 
+>   if you download not match jdk version, please check the scripts/*.sh which variables about jdk!
+>
+>   if you want to use Kylin4 with local cache + soft affinity feature, please download the `experimental` package above.
+
+![tars](images/tars.jpg)
 
 ##### III. Check dependent jars of Kylin4 in `./backup/jars` & Upload them to S3 Path which suffix is */jars, example: `s3://xxx/kylin/jars`
 
 Kylin4 needed extra jars
 
-- commons-configuration-1.3.jar
-- mysql-connector-java-5.1.40.jar
+- Basic jars
+    - commons-configuration-1.3.jar
+    - mysql-connector-java-5.1.40.jar
+- Local Cache + Soft Affinity needed jars
+    - alluxio-2.6.1-client.jar
+    - kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar
 
 ![jars](images/jars.png)
 
@@ -57,6 +76,7 @@ Configure parameters in `./kylin_configs.yaml`
 >   this step is important.  
 >   If you want to change instance type/volume type/volume size for nodes, please change `Ec2Mode` from `test` to `product` in [`EC2_DISTRIBUTION_PARAMS`,`EC2_MASTER_PARAMS`,`EC2_SLAVE_PARAMS`].
 >   If you don't change `EC2Mode` from `test` to `product` then cluster will be created in default configuration.
+>   If you don't change `USING_LOCALCACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature.
 
 1. Change `Ec2InstanceTypeForDistribution` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change instance type of Distribution Node.
 
@@ -99,6 +119,10 @@ Configure parameters in `./kylin_configs.yaml`
 
     > Note: Use `aws configure` on terminal
 
-4. Use `python ./deploy.py --type [deploy|destroy]` to deploy or destroy cluster.
+4. Use `python ./deploy.py --type [deploy|destroy|scale_up|scale_down]` to control cluster.
+   - deploy: create a cluster
+   - destroy: destroy a already created cluster
+   - scale_up: scale up worker nodes for cluster
+   - scale_down: scale down worker nodes for cluster
 
     > Note: Default Kylin4 Cluster is `all` mode, you can set `job` or `query` mode by setting param `Ec2KylinMode` in `kylin_configs.yaml`
