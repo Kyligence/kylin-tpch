@@ -318,6 +318,14 @@ function init_spark() {
     fi
   fi
 
+  # Support prometheus metrics
+  cat <<EOF > ${SPARK_HOME}/conf/metrics.properties
+*.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet
+*.sink.prometheusServlet.path=/metrics/prometheus
+master.sink.prometheusServlet.path=/metrics/master/prometheus
+applications.sink.prometheusServlet.path=/metrics/applications/prometheus
+EOF
+
   logging info "Spark inited ..."
   touch ${HOME_DIR}/.inited_spark
   logging info "Spark is ready ..."

@@ -508,6 +508,14 @@ function init_spark() {
     fi
   fi
 
+  # Support prometheus metrics
+  cat <<EOF > ${SPARK_HOME}/conf/metrics.properties
+*.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet
+*.sink.prometheusServlet.path=/metrics/prometheus
+master.sink.prometheusServlet.path=/metrics/master/prometheus
+applications.sink.prometheusServlet.path=/metrics/applications/prometheus
+EOF
+
   logging info "Spark inited ..."
   touch ${HOME_DIR}/.inited_spark
   logging info "Spark is ready ..."
@@ -605,6 +613,10 @@ kylin.engine.spark-conf.spark.executor.instances=20
 kylin.engine.spark-conf.spark.executor.memory=12GB
 kylin.engine.spark-conf.spark.executor.memoryOverhead=1GB
 
+### support prometheus
+kylin.engine.spark-conf.spark.ui.prometheus.enabled=true
+kylin.engine.spark-conf.spark.executor.processTreeMetrics.enabled=true
+
 ## Parquet Column Index
 kylin.engine.spark-conf.spark.hadoop.parquet.page.size=1048576
 kylin.engine.spark-conf.spark.hadoop.parquet.page.row.count.limit=100000
@@ -621,6 +633,10 @@ kylin.query.spark-conf.spark.executor.cores=2
 kylin.query.spark-conf.spark.executor.memory=7G
 kylin.query.spark-conf.spark.executor.memoryOverhead=1G
 kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
+
+### support prometheus
+kylin.query.spark-conf.spark.ui.prometheus.enabled=true
+kylin.query.spark-conf.spark.executor.processTreeMetrics.enabled=true
 
 ## Disable canary
 kylin.canary.sparder-context-canary-enabled=false
@@ -645,6 +661,10 @@ kylin.query.spark-conf.spark.executor.cores=2
 kylin.query.spark-conf.spark.executor.memory=7G
 kylin.query.spark-conf.spark.executor.memoryOverhead=1G
 kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
+
+### support prometheus
+kylin.query.spark-conf.spark.ui.prometheus.enabled=true
+kylin.query.spark-conf.spark.executor.processTreeMetrics.enabled=true
 
 ## Disable canary
 kylin.canary.sparder-context-canary-enabled=false
@@ -674,6 +694,10 @@ kylin.engine.spark-conf.spark.hadoop.parquet.page.size=1048576
 kylin.engine.spark-conf.spark.hadoop.parquet.page.row.count.limit=100000
 kylin.engine.spark-conf.spark.hadoop.parquet.block.size=268435456
 kylin.query.spark-conf.spark.hadoop.parquet.filter.columnindex.enabled=true
+
+### support prometheus
+kylin.engine.spark-conf.spark.ui.prometheus.enabled=true
+kylin.engine.spark-conf.spark.executor.processTreeMetrics.enabled=true
 EOF
 
   fi

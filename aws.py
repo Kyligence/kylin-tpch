@@ -19,6 +19,13 @@ class AWSInstance:
     SCALE_STACK_NAME_TEMPLATE = 'ec2-slave-{}'
     # NOTE: the spaces in template is for prometheus config's indent
     COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    static_configs:\n    - targets: ["{host}:9100"]' >> /home/ec2-user/prometheus/prometheus.yml """
+    # Special COMMAND_TEMPLATE for spark metrics into prometheus
+    SPARK_MASTER_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/master/prometheus\n    static_configs:\n    - targets: ["{host}:8080"]' >> /home/ec2-user/prometheus/prometheus.yml """
+    SPARK_APPLICATIONS_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/applications/prometheus\n    static_configs:\n    - targets: ["{host}:8080"]' >> /home/ec2-user/prometheus/prometheus.yml """
+    SPARK_DRIVER_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/prometheus\n    static_configs:\n    - targets: ["{host}:4040"]' >> /home/ec2-user/prometheus/prometheus.yml """
+    SPARK_WORKER_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/prometheus\n    static_configs:\n    - targets: ["{host}:4041"]' >> /home/ec2-user/prometheus/prometheus.yml """
+    SPARK_EXECUTORS_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/executors/prometheus\n    static_configs:\n    - targets: ["{host}:4040"]' >> /home/ec2-user/prometheus/prometheus.yml """
+
     cf_client = None
 
     def __init__(self, config):
@@ -221,11 +228,27 @@ class AWSInstance:
         for command in refresh_config_commands:
             self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
 
+        # Special support spark metrics into prometheus
+        spark_config_commands = self.refresh_spark_metrics_commands()
+        for command in spark_config_commands:
+            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+
     def refresh_prometheus_commands(self) -> List:
         # TODO: fill all command for prometheus server config
         params = self.prometheus_config()
         # NOTE: the spaces in template is for prometheus config's indent
         commands = [self.COMMAND_TEMPLATE.format(node=node, host=host) for node, host in params.items()]
+        return commands
+
+    def refresh_spark_metrics_commands(self) -> List:
+        master_private_ip = self._get_node_ip(self.config[Config.MASTER_STACK.value], 'MasterEc2InstancePrivateIp')
+        commands = [
+            self.SPARK_DRIVER_COMMAND_TEMPLATE.format(node='spark_driver', host=master_private_ip),
+            self.SPARK_WORKER_COMMAND_TEMPLATE.format(node='spark_worker', host=master_private_ip),
+            self.SPARK_APPLICATIONS_COMMAND_TEMPLATE.format(node='spark_applications', host=master_private_ip),
+            self.SPARK_MASTER_COMMAND_TEMPLATE.format(node='spark_master', host=master_private_ip),
+            self.SPARK_EXECUTORS_COMMAND_TEMPLATE.format(node='spark_executors', host=master_private_ip),
+        ]
         return commands
 
     def refresh_prometheus_commands_after_scale(self, worker_nums: List) -> List:
@@ -256,21 +279,22 @@ class AWSInstance:
 
     def get_all_node_ips(self) -> List:
         res = []
-        distribution_private_ip = self.get_specify_resource_from_output(
-            self.config[Config.DISTRIBUTION_STACK.value], 'DistributionNodePrivateIp')
-        master_private_ip = self.get_specify_resource_from_output(
-            self.config[Config.MASTER_STACK.value], 'MasterEc2InstancePrivateIp'
+        distribution_private_ip = self._get_node_ip(
+            self.config[Config.DISTRIBUTION_STACK.value],
+            'DistributionNodePrivateIp'
         )
+        master_private_ip = self._get_node_ip(self.config[Config.MASTER_STACK.value], 'MasterEc2InstancePrivateIp')
         slaves_private_ips = [
-            self.get_specify_resource_from_output(
-                self.config[Config.SLAVE_STACK.value], f'Slave0{i}Ec2InstancePrivateIp'
-            )
+            self._get_node_ip(self.config[Config.SLAVE_STACK.value], f'Slave0{i}Ec2InstancePrivateIp')
             for i in range(1, 4)  # default slave nodes' num is 3
         ]
         res.append(distribution_private_ip)
         res.append(master_private_ip)
         res.extend(slaves_private_ips)
         return res
+
+    def _get_node_ip(self, stack_name: str, private_ip_key: str) -> str:
+        return self.get_specify_resource_from_output(stack_name, private_ip_key)
 
     def get_scale_node_ips(self, worker_nums: List) -> List:
         scale_private_ips = [
@@ -515,6 +539,9 @@ class AWS:
         self.cloud_instance = AWSInstance(config)
         self.config = config
 
+    def is_cluster_ready(self) -> bool:
+        return self.cloud_instance.is_ec2_stack_ready()
+
     def aws_ec2_cluster(self) -> Optional[Dict]:
         if not self.cloud_instance.is_ec2_stack_ready():
             self.cloud_instance.create_vpc_stack()
@@ -540,12 +567,13 @@ class AWS:
         # after terminated all node check again.
         assert self.cloud_instance.is_ec2_stack_terminated() is True
 
-    def aws_cloud(self) -> str:
-        if self.config[Config.DEPLOY_PLATFORM.value] != 'ec2':
-            msg = f'Not supported platform: {self.config[Config.DEPLOY_PLATFORM.value]}.'
-            logger.error(msg)
+    def is_aws_cloud_ready(self) -> bool:
+        if not self.is_cluster_ready():
+            msg = f'Current Cluster is not ready, please deploy cluster first.'
+            logger.warning(msg)
             raise Exception(msg)
 
+    def aws_cloud(self) -> str:
         resource = self.aws_ec2_cluster()
         # only get the master dns
         # FIXME: fix hard code and get method

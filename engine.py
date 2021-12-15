@@ -57,6 +57,7 @@ class Engine:
             raise Exception(msg)
 
     def _generate_nodes(self) -> List:
-        if self.scale_up_nodes[0] == self.scale_up_nodes[1]:
-            return [self.scale_up_nodes[0]]
-        return list(range(self.scale_up_nodes[0], self.scale_up_nodes[1] + 1))
+        _from, _to = self.scale_up_nodes
+        if _from == _to:
+            return [_from]
+        return list(range(_from, _to + 1))
