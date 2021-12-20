@@ -26,14 +26,19 @@ class Engine:
         self.engine_utils = EngineUtils(self.config)
 
     def launch_cluster(self):
-        logger.info('Ec2: first launch Instances And Kylin nodes')
+        logger.info('Ec2: first launch Instances And Kylin nodes.')
         self.engine_utils.launch_aws_kylin()
         logger.info('Kylin Cluster already start successfully.')
 
     def destroy_cluster(self):
-        logger.info('Ec2: destroy useless nodes')
+        logger.info('Ec2: destroy useless nodes.')
         self.engine_utils.destroy_aws_kylin()
         logger.info('Ec2: destroy useless nodes successfully.')
+
+    def list_alive_workers(self):
+        logger.info('Ec2: list alive nodes.')
+        self.engine_utils.alive_workers()
+        logger.info('Ec2: list alive nodes successfully.')
 
     def scale_workers(self, scale_type: str):
         self._validate_scale()

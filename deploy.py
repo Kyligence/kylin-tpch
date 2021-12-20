@@ -13,6 +13,8 @@ def deploy_on_aws(deploy_type: str) -> None:
         aws_engine.launch_cluster()
     elif deploy_type == 'destroy':
         aws_engine.destroy_cluster()
+    elif deploy_type == 'list':
+        aws_engine.list_alive_workers()
     elif deploy_type == 'scale_up':
         aws_engine.scale_workers('up')
     elif deploy_type == 'scale_down':
@@ -23,8 +25,8 @@ if __name__ == '__main__':
     logging.config.fileConfig('logging.ini')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--type", required=False, default='deploy', dest='type',
-                        choices=['deploy', 'destroy', 'scale_up', 'scale_down'],
+    parser.add_argument("--type", required=False, default='list', dest='type',
+                        choices=['deploy', 'destroy', 'list', 'scale_up', 'scale_down'],
                         help="Use 'deploy' to create a cluster or 'destroy' to delete cluster")
     args = parser.parse_args()
     deploy_on_aws(args.type)

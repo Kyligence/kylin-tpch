@@ -4,7 +4,7 @@ import re
 import time
 from ast import literal_eval
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 
 import boto3
 from botocore.exceptions import ClientError, WaiterError
@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError, WaiterError
 from constant.client import Client
 from constant.config import Config
 from constant.yaml_files import File
-from utils import stack_to_map, read_template, expand_stack
+from utils import stack_to_map, read_template, expand_stack, scaled_stacks
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,8 @@ class AWSInstance:
         self.region = config['AWS_REGION']
         self.cf_client = boto3.client(Client.CLOUD_FORMATION.value, region_name=self.region)
         self._init_ec2_env()
-        self.stack_map = expand_stack(literal_eval(config['SCALE_NODES'])) if config['SCALE_NODES'] else stack_to_map
+        self.scaled_nodes: Tuple = literal_eval(config['SCALE_NODES']) if config['SCALE_NODES'] else []
+        self.stack_map = expand_stack(self.scaled_nodes) if self.scaled_nodes else stack_to_map
 
     def _init_ec2_env(self):
         self.ec2_client = boto3.client(Client.EC2.value, region_name=self.region)
@@ -45,6 +46,7 @@ class AWSInstance:
         self.yaml_path = os.path.join(self.cur_dir, 'cloudformation_templates')
         self.create_complete_waiter = self.cf_client.get_waiter('stack_create_complete')
         self.delete_complete_waiter = self.cf_client.get_waiter('stack_delete_complete')
+        self.exists_waiter = self.cf_client.get_waiter('stack_exists')
 
     def create_vpc_stack(self) -> Optional[Dict]:
         if self._stack_complete(self.config[Config.VPC_STACK.value]):
@@ -375,6 +377,50 @@ class AWSInstance:
 
         return handled_outputs
 
+    def alive_workers(self) -> None:
+        workers = []
+        basic_stack_names = [
+            self.config[Config.DISTRIBUTION_STACK.value],
+            self.config[Config.MASTER_STACK.value],
+            self.config[Config.SLAVE_STACK.value],
+        ]
+        # basic instances check
+        distribution_stack_name = self.config[Config.DISTRIBUTION_STACK.value]
+        if self._stack_exists(stack_name=distribution_stack_name):
+            instance_id = self.get_specify_resource_from_output(
+                distribution_stack_name, 'Ec2InstanceIdOfDistributionNode'
+            )
+            workers.append(f'{distribution_stack_name}\t\t{instance_id}\n')
+
+        master_stack_name = self.config[Config.MASTER_STACK.value]
+        if self._stack_exists(stack_name=master_stack_name):
+            instance_id = self.get_specify_resource_from_output(
+                master_stack_name, 'MasterEc2InstanceId'
+            )
+            workers.append(f'{master_stack_name}\t\t{instance_id}\n')
+
+        slave_stack_name = self.config[Config.SLAVE_STACK.value]
+        if self._stack_exists(stack_name=slave_stack_name):
+            for index, resource_type in enumerate(['Slave01Ec2InstanceId', 'Slave02Ec2InstanceId', 'Slave03Ec2InstanceId']):
+                instance_id = self.get_specify_resource_from_output(
+                    slave_stack_name, resource_type
+                )
+                workers.append(f'{slave_stack_name}-slave0{index+1}\t\t{instance_id}\n')
+
+        scale_nodes = scaled_stacks(self.scaled_nodes)
+        for scale_stack in scale_nodes:
+            if self._stack_exists(stack_name=scale_stack):
+                instance_id = self.get_specify_resource_from_output(
+                    scale_stack, 'SlaveEc2InstanceId'
+                )
+                workers.append(f'{scale_stack}\t\t{instance_id}\n')
+
+        result = f"Alive Nodes List:\nStack Name\t\tInstance ID\n"
+        for w in workers:
+            result += w
+        logger.info(result)
+        logger.info("Alive Nodes List Done!")
+
     def is_ec2_stack_ready(self) -> bool:
         if not (
                 self._stack_complete(self.config[Config.VPC_STACK.value])
@@ -518,7 +564,7 @@ class AWSInstance:
             logger.error(msg)
             raise Exception(msg)
 
-    def _stack_exists(self, stack_name: str, required_status: str = 'CREATE_COMPLETE') -> bool:
+    def _stack_status(self, stack_name: str, required_status: str = 'CREATE_COMPLETE') -> bool:
         return self._stack_status_check(name_or_id=stack_name, status=required_status)
 
     def _stack_deleted(self, stack_name: str, required_status: str = 'DELETE_COMPLETE') -> bool:
@@ -542,6 +588,19 @@ class AWSInstance:
             )
         except WaiterError as wx:
             logger.error(wx)
+            return False
+        return True
+
+    def _stack_exists(self, stack_name: str) -> bool:
+        try:
+            self.exists_waiter.wait(
+                StackName=stack_name,
+                WaiterConfig={
+                    'Delay': 5,
+                    'MaxAttempts': 2
+                }
+            )
+        except WaiterError:
             return False
         return True
 
@@ -625,12 +684,10 @@ class AWS:
         return resource.get('MasterEc2InstancePrivateIp')
 
     def destroy_aws_cloud(self):
-        if self.config[Config.DEPLOY_PLATFORM.value] != 'ec2':
-            msg = f'Not supported platform: {self.config[Config.DEPLOY_PLATFORM.value]}.'
-            logger.error(msg)
-            raise Exception(msg)
-
         self.terminate_ec2_cluster()
+
+    def alive_workers(self):
+        self.cloud_instance.alive_workers()
 
     @staticmethod
     def scale_up_down(config: Dict, worker_nums: List, scale_type: str) -> None:

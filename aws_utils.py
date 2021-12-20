@@ -28,6 +28,9 @@ class EngineUtils:
     def destroy_aws_kylin(self):
         self.aws_instance.destroy_aws_cloud()
 
+    def alive_workers(self):
+        self.aws_instance.alive_workers()
+
     def scale_aws_worker(self, worker_nums: List, scale_type: str):
         logger.info(f'Current scaling {scale_type} node: {worker_nums}.')
         assert self.is_cluster_ready() is True, 'Master node must be ready.'
