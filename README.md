@@ -117,17 +117,34 @@ Configure parameters in `./kylin_configs.yaml`
 2. Make a virtual env for current repo
 
     > Note: 
+    >  
     >  Use `source ./venv/bin/activate` to activate virtual env
+    >
     >  Use `pip install -r ./requirements.txt` to install dependencies
 
 3. Configure an aws account which has the access to aws console
 
     > Note: Use `aws configure` on terminal
+    > 
+    > Example:
+    > 
+    >     $ aws configure
+    >
+    >     AWS Access Key ID: 123456
+    >
+    >     AWS Secret Access Key: 123456
+    >
+    >     Default region name: cn-northwest-1
+    >
+    >     Default output format: json
 
 4. Use `python ./deploy.py --type [deploy|destroy|scale_up|scale_down]` to control cluster.
    - deploy: create a cluster
+   
    - destroy: destroy a already created cluster
+   
    - scale_up: scale up worker nodes for cluster
+   
    - scale_down: scale down worker nodes for cluster
 
     > Note: Default Kylin4 Cluster is `all` mode, you can set `job` or `query` mode by setting param `Ec2KylinMode` in `kylin_configs.yaml`
