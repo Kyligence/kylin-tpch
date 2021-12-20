@@ -287,7 +287,7 @@ function prepare_mysql() {
   logging info "Mysql is ready ..."
 }
 
-function prepare_grafana() {
+function start_grafana() {
   logging info "Preparing grafana ..."
   if [[ -f ${HOME_DIR}/.prepared_grafana ]]; then
     logging warn "Grafana service already installed, check it."
@@ -510,9 +510,6 @@ function prepare_packages() {
   prepare_zookeeper
   init_zookeeper
 
-  # grafana will start at last
-  prepare_grafana
-
   touch ${HOME_DIR}/.prepared_packages
   logging info "All need packages are ready ..."
 }
@@ -522,6 +519,9 @@ function start_services_on_other() {
   # start extra monitor service
   # NOTE: prometheus server will start after all node_exporter on every node started.
   start_node_exporter
+
+  # grafana will start at last
+  start_grafana
 }
 
 function main() {

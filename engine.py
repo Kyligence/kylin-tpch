@@ -1,7 +1,8 @@
 import ast
 import logging
 import os
-from typing import Tuple, List
+from typing import Tuple
+from utils import generate_nodes
 
 import yaml
 
@@ -36,7 +37,7 @@ class Engine:
 
     def scale_workers(self, scale_type: str):
         self._validate_scale()
-        workers = self._generate_nodes()
+        workers = generate_nodes(self.scale_up_nodes)
         self.engine_utils.scale_aws_worker(worker_nums=workers, scale_type=scale_type)
         logger.info(f'Current scaling {scale_type} total {len(workers)} nodes successfully.')
 
@@ -55,9 +56,3 @@ class Engine:
             msg = f'Invalid `SCALE_NODES`, please check.'
             logger.error(msg)
             raise Exception(msg)
-
-    def _generate_nodes(self) -> List:
-        _from, _to = self.scale_up_nodes
-        if _from == _to:
-            return [_from]
-        return list(range(_from, _to + 1))

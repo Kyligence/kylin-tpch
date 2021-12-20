@@ -68,11 +68,18 @@ def expand_stack(scale_nodes: Tuple) -> Dict:
 
 
 def scaled_stacks(scale_nodes: Tuple) -> List:
+    node_list = generate_nodes(scale_nodes)
+    scaled_stack_names = [f'ec2-slave-{i}' for i in node_list]
+    return scaled_stack_names
+
+
+def generate_nodes(scale_nodes: Tuple) -> List:
     if not scale_nodes:
         return []
-
-    scaled_stack_names = [f'ec2-slave-{i}' for i in scale_nodes]
-    return scaled_stack_names
+    _from, _to = scale_nodes
+    if _from == _to:
+        return [_from]
+    return list(range(_from, _to + 1))
 
 
 def read_template(file_path: str):

@@ -1,6 +1,8 @@
 import logging
 import os
+import re
 import time
+from ast import literal_eval
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, List
 
@@ -34,7 +36,7 @@ class AWSInstance:
         self.region = config['AWS_REGION']
         self.cf_client = boto3.client(Client.CLOUD_FORMATION.value, region_name=self.region)
         self._init_ec2_env()
-        self.stack_map = expand_stack(config['SCALE_NODES']) if config['SCALE_NODES'] else stack_to_map
+        self.stack_map = expand_stack(literal_eval(config['SCALE_NODES'])) if config['SCALE_NODES'] else stack_to_map
 
     def _init_ec2_env(self):
         self.ec2_client = boto3.client(Client.EC2.value, region_name=self.region)
@@ -199,7 +201,7 @@ class AWSInstance:
         if stack_name != self.config[Config.DISTRIBUTION_STACK.value]:
             logger.warning(f"Only {self.config[Config.DISTRIBUTION_STACK.value]} has the prometheus server.")
             return
-        self.refresh_prometheus_config(stack_name=stack_name)
+        self.refresh_prometheus_param_map(stack_name=stack_name)
         self.start_prometheus_server(stack_name=stack_name)
 
     def start_prometheus_server(self, stack_name: str) -> None:
@@ -220,7 +222,7 @@ class AWSInstance:
         self.stop_prometheus_server(stack_name=stack_name)
         self.start_prometheus_server(stack_name=stack_name)
 
-    def refresh_prometheus_config(self, stack_name: str) -> None:
+    def refresh_prometheus_param_map(self, stack_name: str) -> None:
         refresh_config_commands = self.refresh_prometheus_commands()
         resource_type = 'Ec2InstanceIdOfDistributionNode'
         # NOTE: name_or_id must be instance id!
@@ -235,7 +237,7 @@ class AWSInstance:
 
     def refresh_prometheus_commands(self) -> List:
         # TODO: fill all command for prometheus server config
-        params = self.prometheus_config()
+        params = self.prometheus_param_map()
         # NOTE: the spaces in template is for prometheus config's indent
         commands = [self.COMMAND_TEMPLATE.format(node=node, host=host) for node, host in params.items()]
         return commands
@@ -252,28 +254,67 @@ class AWSInstance:
         return commands
 
     def refresh_prometheus_commands_after_scale(self, worker_nums: List) -> List:
-        params = self.after_scale_prometheus_config(worker_nums)
+        params = self.after_scale_prometheus_params_map(worker_nums)
         commands = [self.COMMAND_TEMPLATE.format(node=node, host=host) for node, host in params.items()]
         return commands
 
-    def prometheus_config(self) -> Dict:
+    def prometheus_param_map(self) -> Dict:
         ips = self.get_all_node_ips()
         params = ['distribution_node', 'master_node', 'slave01_node', 'slave02_node', 'slave03_node']
         param_map = dict(zip(params, ips))
         # TODO: fill all prometheus server config
         return param_map
 
-    def after_scale_prometheus_config(self, worker_nums: List) -> Dict:
+    def after_scale_prometheus_params_map(self, worker_nums: List) -> Dict:
         ips = self.get_scale_node_ips(worker_nums)
         params = [f'slave{worker}-node' for worker in worker_nums]
         param_map = dict(zip(params, ips))
         return param_map
 
-    def refresh_prometheus_config_after_scale(self, stack_name: str, worker_nums: List) -> None:
+    def check_prometheus_config_after_scale_up(self, stack_name: str, worker_nums: List) -> List:
+        workers_param_map = self.after_scale_prometheus_params_map(worker_nums)
+        exists_workers_command = '''grep -Fq "{node}" /home/ec2-user/prometheus/prometheus.yml; echo $?'''
+        resource_type = 'Ec2InstanceIdOfDistributionNode'
+        # NOTE: name_or_id must be instance id!
+        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+        not_exists_workers = []
+        for worker in workers_param_map.keys():
+            command = exists_workers_command.format(node=worker)
+            output = self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+            # output['StandardOutputContent'] = '1\n' means the node not exists in the prometheus config
+            if output['StandardOutputContent'] == '1\n':
+                not_exists_workers.extend(re.findall(r'\d+', worker))
+        return not_exists_workers
+
+    def check_prometheus_config_after_scale_down(self, stack_name: str, worker_nums: List) -> List:
+        workers_param_map = self.after_scale_prometheus_params_map(worker_nums)
+        exists_workers_command = '''grep -Fq "{node}" /home/ec2-user/prometheus/prometheus.yml; echo $?'''
+        resource_type = 'Ec2InstanceIdOfDistributionNode'
+        # NOTE: name_or_id must be instance id!
+        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+        exists_workers = []
+        for worker in workers_param_map.keys():
+            command = exists_workers_command.format(node=worker)
+            output = self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+            # output['StandardOutputContent'] = '0\n' means the node exists in the prometheus config
+            if output['StandardOutputContent'] == '0\n':
+                exists_workers.append(worker)
+        return exists_workers
+
+    def refresh_prometheus_config_after_scale_up(self, stack_name: str, worker_nums: List) -> None:
         commands = self.refresh_prometheus_commands_after_scale(worker_nums)
         resource_type = 'Ec2InstanceIdOfDistributionNode'
         # NOTE: name_or_id must be instance id!
         instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+        for command in commands:
+            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+
+    def refresh_prometheus_config_after_scale_down(self, stack_name: str, exists_workers: List) -> None:
+        commands_template = '''sed -i "/{node}/,+2d" /home/ec2-user/prometheus/prometheus.yml'''
+        resource_type = 'Ec2InstanceIdOfDistributionNode'
+        # NOTE: name_or_id must be instance id!
+        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+        commands = [commands_template.format(node=worker) for worker in exists_workers]
         for command in commands:
             self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
 
@@ -391,6 +432,7 @@ class AWSInstance:
             time.sleep(10)
         assert output and output['Status'] == 'Success', \
             f"execute script failed, failed info: {output['StandardErrorContent']}"
+        return output
 
     def stop_ec2_instance(self, instance_id: str):
         self.ec2_client.stop_instances(
@@ -572,6 +614,7 @@ class AWS:
             msg = f'Current Cluster is not ready, please deploy cluster first.'
             logger.warning(msg)
             raise Exception(msg)
+        return True
 
     def aws_cloud(self) -> str:
         resource = self.aws_ec2_cluster()
@@ -602,11 +645,26 @@ class AWS:
 
     def after_scale(self, workers_nums: List, scale_type: str) -> None:
         if scale_type == 'up':
-            logger.info("Refresh prometheus config after scale up.")
-            self.cloud_instance.refresh_prometheus_config_after_scale(
+            logging.info(f"Checking exists prometheus config after scale up.")
+            expected_workers = self.cloud_instance.check_prometheus_config_after_scale_up(
                 self.config[Config.DISTRIBUTION_STACK.value], workers_nums
             )
-            self.cloud_instance.restart_prometheus_server(self.config[Config.DISTRIBUTION_STACK.value])
+            logger.info("Refresh prometheus config after scale up.")
+            if expected_workers:
+                self.cloud_instance.refresh_prometheus_config_after_scale_up(
+                    self.config[Config.DISTRIBUTION_STACK.value], expected_workers
+                )
+        else:
+            logging.info(f"Checking exists prometheus config after scale down.")
+            exists_workers = self.cloud_instance.check_prometheus_config_after_scale_down(
+                self.config[Config.DISTRIBUTION_STACK.value], workers_nums
+            )
+            logger.info("Refresh prometheus config after scale down.")
+            if exists_workers:
+                self.cloud_instance.refresh_prometheus_config_after_scale_down(
+                    self.config[Config.DISTRIBUTION_STACK.value], exists_workers
+                )
+        self.cloud_instance.restart_prometheus_server(self.config[Config.DISTRIBUTION_STACK.value])
 
     @staticmethod
     def validate_scale(scale_type: str) -> None:
