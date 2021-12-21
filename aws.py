@@ -165,12 +165,21 @@ class AWSInstance:
         if stack_name != config[Config.DISTRIBUTION_STACK.value]:
             logger.warning(f"Only {config[Config.DISTRIBUTION_STACK.value]} should backup before terminate.")
             return
-        tn = time.time_ns()
-        backup_command = f'mysqldump -h$(hostname -i) -uroot -p123456 --databases kylin hive ' \
-                         f'--add-drop-database >  /home/ec2-user/metadata-backup-{tn}.sql'
+
         resource_type = 'Ec2InstanceIdOfDistributionNode'
         # NOTE: name_or_id must be instance id!
         instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
+
+        if self.is_ec2_instance_stopped(instance_id):
+            msg = f'Current instance {instance_id} of {stack_name} is not running, ' \
+                  f'please start the instance to backup metadata.'
+            logger.warning(msg)
+            raise Exception(msg)
+
+        tn = time.time_ns()
+        backup_command = f'mysqldump -h$(hostname -i) -uroot -p123456 --databases kylin hive ' \
+                         f'--add-drop-database >  /home/ec2-user/metadata-backup-{tn}.sql'
+
         self.exec_script_instance_and_return(name_or_id=instance_id, script=backup_command)
         cp_to_s3_command = f"aws s3 cp /home/ec2-user/metadata-backup-{tn}.sql {config['BackupMetadataBucketFullPath']} " \
                            f"--region {config['AWS_REGION']}"
@@ -505,6 +514,31 @@ class AWSInstance:
             InstanceIds=instance_ids,
         )
         return resp
+    
+    def ec2_instance_statuses(self, instance_ids: List) -> Dict:
+        resp = self.ec2_client.describe_instance_status(
+            Filters=[{
+                'Name': 'instance-state-name',
+                'Values': ['pending', 'running', 'shutting-down', 'terminated', 'stopping', 'stopped'],
+            }],
+            InstanceIds=instance_ids,
+            # Note: IncludeAllInstances (boolean), Default is false.
+            # When true , includes the health status for all instances.
+            # When false , includes the health status for running instances only.
+            IncludeAllInstances=True,
+        )
+        return resp['InstanceStatuses']
+
+    def ec2_instance_status(self, instance_id: str) -> str:
+        resp = self.ec2_instance_statuses(instance_ids=[instance_id])
+        assert resp, 'Instance statuses must be not empty.'
+        return resp[0]['InstanceState']['Name']
+
+    def is_ec2_instance_running(self, instance_id: str) -> bool:
+        return self.ec2_instance_status(instance_id) == 'running'
+
+    def is_ec2_instance_stopped(self, instance_id: str) -> bool:
+        return self.ec2_instance_status(instance_id) == 'stopped'
 
     def scale_up_worker(self, worker_num: int) -> Optional[Dict]:
         """
