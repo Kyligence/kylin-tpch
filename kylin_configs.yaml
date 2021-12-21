@@ -38,7 +38,8 @@ SCALE_NODES: (4, 6)
 
 # Whether to use Local Cache + Soft Affinity
 # Default is false.
-USING_LOCALCACHE_SOFT_AFFINITY: &local_cache_soft_affinity false
+# Note: this variable will be used in template which type is str!
+USING_LOCALCACHE_SOFT_AFFINITY: &local_cache_soft_affinity "false"
 
 #Backup Params
 ## backup meta file to S3 bucket, must not be null
