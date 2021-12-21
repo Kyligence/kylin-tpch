@@ -138,10 +138,12 @@ Configure parameters in `./kylin_configs.yaml`
     >
     >     Default output format: json
 
-4. Use `python ./deploy.py --type [deploy|destroy|scale_up|scale_down]` to control cluster.
+4. Use `python ./deploy.py --type [deploy|destroy|list|scale_up|scale_down]` to control cluster.
    - deploy: create a cluster
    
    - destroy: destroy a already created cluster
+   
+   - list: list alive nodes which are with stack name and instance id
    
    - scale_up: scale up worker nodes for cluster
    
