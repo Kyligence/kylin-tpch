@@ -70,34 +70,52 @@ Kylin4 needed extra jars
 
 ##### V. Initialize `./kylin_configs.yaml`
 
-Configure parameters in `./kylin_configs.yaml`
+Configure parameters in `./kylin_configs.yaml`.
+
+Required parameters:
+
+- `IAMRole`: IAM role which has the access to S3 authority and will be created in `AWS Console -> IAM -> Roles`.
+
+- `S3_FULL_BUCKET_PATH`: the prefix path of storing `jars/scripts/tar`, example `s3://xxx/kylin/tar` is for `tar` to store, then this path will be `s3://xxx/kylin`.
+
+- `S3_BUCKET_PATH`: `S3_FULL_BUCKET_PATH` without prefix `s3:/`, example: `S3_FULL_BUCKET_PATH` is `s3://xxx/kylin`, so `S3_BUCKET_PATH` is `/xxx/kylin`.
+
+- `KeyName`: security key name which will be created in `AWS Console-> EC2 -> Network & Security -> Key Pairs` is a set of security credentials that you use to prove your identity when connecting to an instance.
 
 > Note: 
 >   This step is important.  
 >
->   If you want to change instance type/volume type/volume size for nodes, please change `Ec2Mode` from `test` to `product` in [`EC2_DISTRIBUTION_PARAMS`,`EC2_MASTER_PARAMS`,`EC2_SLAVE_PARAMS`].
+>   If you want to change instance type/volume type/volume size for nodes, please change `Ec2Mode` from `test` to `product` in [`EC2_DISTRIBUTION_PARAMS`, `EC2_MASTER_PARAMS`, `EC2_SLAVE_PARAMS`, `EC2_SCALE_SLAVE_PARAMS`].
 >
->   If you don't change `EC2Mode` from `test` to `product` then cluster will be created in default configuration.
+>   If you don't change `EC2Mode` from `test` to `product` then cluster will be created in default configuration!
 >
->   If you don't change `USING_LOCALCACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature.
+>   If you don't change `USING_LOCALCACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature!
 
-1. Change `Ec2InstanceTypeForDistribution` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change instance type of Distribution Node.
+Optional parameters:
 
-2. Change `Ec2VolumnTypeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume type of Distribution Node.
+- `Ec2InstanceTypeForDistribution`: Change `Ec2InstanceTypeForDistribution` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change instance type of Distribution Node.
 
-3. Change `Ec2VolumeSizeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume size of Distribution Node.
+- `Ec2VolumnTypeForMasterNode`: Change `Ec2VolumnTypeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume type of Distribution Node.
 
-4. Change `InstanceType` type in `EC2_MASTER_PARAMS` to what you want if you want to change instance type of Master Node.
+- `Ec2VolumeSizeForMasterNode`: Change `Ec2VolumeSizeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume size of Distribution Node.
 
-5. Change `Ec2VolumnTypeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume type of Master Node.
+- `InstanceType` in `EC2_MASTER_PARAMS`: Change `InstanceType` type in `EC2_MASTER_PARAMS` to what you want if you want to change instance type of Master Node.
 
-6. Change `Ec2VolumeSizeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume size of Master Node.
+- `Ec2VolumnTypeForMasterNode`: Change `Ec2VolumnTypeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume type of Master Node.
 
-7. Change `InstanceType` type in `EC2_SLAVE_PARAMS` to what you want if you want to change instance type of Slave Node.
+- `Ec2VolumeSizeForMasterNode`: Change `Ec2VolumeSizeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume size of Master Node.
 
-8. Change `Ec2VolumnTypeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume type of Slave Node.
+- `InstanceType` in `EC2_SLAVE_PARAMS`: Change `InstanceType` type in `EC2_SLAVE_PARAMS` to what you want if you want to change instance type of Slave Node.
 
-9. Change `Ec2VolumeSizeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume size of Slave Node.
+- `Ec2VolumnTypeForSlaveNode`: Change `Ec2VolumnTypeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume type of Slave Node.
+
+- `Ec2VolumeSizeForSlaveNode`: Change `Ec2VolumeSizeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume size of Slave Node.
+
+- `InstanceType` in `EC2_SCALE_SLAVE_PARAMS`: Change `InstanceType` type in `EC2_SCALE_SLAVE_PARAMS` to what you want if you want to change instance type of `scaled` Slave Node.
+
+- `Ec2VolumnTypeForSlaveNode` in `EC2_SCALE_SLAVE_PARAMS`: Change `Ec2VolumnTypeForSlaveNode` type in `EC2_SCALE_SLAVE_PARAMS` to what you want if you want to change volume type of `scaled` Slave Node.
+
+- `Ec2VolumeSizeForSlaveNode` in `EC2_SCALE_SLAVE_PARAMS`: Change `Ec2VolumeSizeForSlaveNode` type in `EC2_SCALE_SLAVE_PARAMS` to what you want if you want to change volume size of `scaled` Slave Node.
 
 
 ##### VI. Initialize needed IAM role and Used User which have access to aws
