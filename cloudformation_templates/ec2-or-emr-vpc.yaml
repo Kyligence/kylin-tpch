@@ -5,29 +5,28 @@ Parameters:
   # Optional Parameters
   KylinVersion:
     Type: String
-    Default: 4
     Description: this version is for tag
+    Default: 4
+    AllowedValues:
+      - 4
   ClusterType:
     Type: String
-    Default: EC2
+    Default: ec2
     Description: this type is for tag
     AllowedValues:
-      - EC2
+      - ec2
   VpcCidrBlock:
     Type: String
     Default: 10.1.0.0/16
-  Subnet01CidrBlock:
+  SubnetCidrBlock:
     Type: String
     Default: 10.1.0.0/24
   Subnet02CidrBlock:
     Type: String
     Default: 10.1.1.0/24
-  PrivateSubnet01CidrBlock:
+  Ec2OperationRole:
     Type: String
-    Default: 10.1.2.0/24
-  PrivateSubnet02CidrBlock:
-    Type: String
-    Default: 10.1.3.0/24
+    Description: Should be created by pre-step, must not be null !
 
 Mappings:
   Region2Az:
@@ -36,6 +35,12 @@ Mappings:
       '2': cn-northwest-1b
 
 Resources:
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    DeletionPolicy: Delete
+    Properties:
+      Roles:
+        - !Ref Ec2OperationRole
   Ec2OrEmrBenchMarkVpc:
     Type: AWS::EC2::VPC
     Properties:
@@ -51,12 +56,12 @@ Resources:
               - EmrOrEc2
               - Vpc
     DeletionPolicy: Delete
-  Ec2OrEmrBenchMarkSubnet1:
+  Ec2OrEmrBenchMarkSubnet:
     Type: AWS::EC2::Subnet
     DeletionPolicy: Delete
     Properties:
       VpcId: !Ref Ec2OrEmrBenchMarkVpc
-      CidrBlock: !Ref Subnet01CidrBlock
+      CidrBlock: !Ref SubnetCidrBlock
       AvailabilityZone: !FindInMap
         - Region2Az
         - !Ref 'AWS::Region'
@@ -69,7 +74,7 @@ Resources:
               - !Ref KylinVersion
               - !Ref ClusterType
               - pub1
-  Ec2OrEmrBenchMarkSubnet2:
+  Ec2OrEmrBenchMarkSubnet02:
     Type: AWS::EC2::Subnet
     DeletionPolicy: Delete
     Properties:
@@ -87,6 +92,20 @@ Resources:
               - !Ref KylinVersion
               - !Ref ClusterType
               - pub2
+  Ec2OrEmrBenchMarkDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    DeletionPolicy: Delete
+    Properties:
+      Tags:
+        - Key: Project
+          Value: kylin4
+        - Key: Name
+          Value: subnet group for db instance
+      DBSubnetGroupDescription: subnet for db instance
+      SubnetIds:
+        - !Ref Ec2OrEmrBenchMarkSubnet
+        - !Ref Ec2OrEmrBenchMarkSubnet02
+
   Ec2OrEmrBenchMarkInternetGateway:
     DeletionPolicy: Delete
     Type: AWS::EC2::InternetGateway
@@ -128,17 +147,11 @@ Resources:
       RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref Ec2OrEmrBenchMarkInternetGateway
-  Subnet1RouteTableAssociation:
+  SubnetRouteTableAssociation:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     DeletionPolicy: Delete
     Properties:
-      SubnetId: !Ref Ec2OrEmrBenchMarkSubnet1
-      RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
-  Subnet2RouteTableAssociation:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    DeletionPolicy: Delete
-    Properties:
-      SubnetId: !Ref Ec2OrEmrBenchMarkSubnet2
+      SubnetId: !Ref Ec2OrEmrBenchMarkSubnet
       RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
   Ec2OrEmrBenchMarkSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -194,21 +207,21 @@ Outputs:
   VpcId:
     Description: the id of VPC
     Value: !Ref Ec2OrEmrBenchMarkVpc
-  Subnet01ID:
-    Description: the id of subnet 01, and this is for emr
-    Value: !Ref Ec2OrEmrBenchMarkSubnet1
-  Subnet02ID:
-    Description: the id of subnet 02, and this is for ec2 nodes
-    Value: !Ref Ec2OrEmrBenchMarkSubnet2
+  SubnetId:
+    Description: the id of subnet
+    Value: !Ref Ec2OrEmrBenchMarkSubnet
   CidrIpOfVPC:
     Description: the cidr block ip of VPC
     Value: !Ref VpcCidrBlock
-  CidrIpOfSubnet01:
-    Description: the cidr block ip of subnet 01
-    Value: !Ref Subnet01CidrBlock
-  CidrIpOfSubnet02:
-    Description: the cidr block ip of subnet 02
-    Value: !Ref Subnet02CidrBlock
+  CidrIpOfSubnet:
+    Description: the cidr block ip of subnet
+    Value: !Ref SubnetCidrBlock
   SecurityGroupId:
     Description: the id of security group
     Value: !Ref Ec2OrEmrBenchMarkSecurityGroup
+  InstanceProfileId:
+    Description: Instance profile for cluster
+    Value: !Ref Ec2InstanceProfile
+  SubnetGroupName:
+    Description: Subnet group name for DB instance
+    Value: !Ref Ec2OrEmrBenchMarkDBSubnetGroup

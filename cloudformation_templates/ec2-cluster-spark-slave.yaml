@@ -2,16 +2,16 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Create Slave nodes for ec2 instances and deploy related services, hadoop/spark/zookeeper/hive/jdk/kylin4
 Parameters:
   # Must passed Parameters
-  MasterNodeHost:
+  SparkMasterNodeHost:
     Type: String
     Description: Must be created at pre-step
-  Ec2InstanceProfile:
+  InstanceProfileId:
     Type: String
     Description: Must be created at pre-step
 
-  PublicSubnetID:
+  SubnetId:
     Type: String
-  SecurityGroupID:
+  SecurityGroupId:
     Type: String
   EMREc2KeyName:
     Type: String
@@ -40,7 +40,7 @@ Parameters:
 
   WaitingTime:
     Type: Number
-    Default: 600
+    Default: 50
     Description: Waiting time for start slave worker
   BucketFullPath:
     Type: String
@@ -50,7 +50,7 @@ Parameters:
     Description: example /xxx/kylin which Url is without prefix s3:/
   SlaveScriptFileName:
     Type: String
-    Default: prepare-ec2-env-for-slave.sh
+    Default: prepare-ec2-env-for-spark-slave.sh
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -104,16 +104,16 @@ Mappings:
       HVMebs: ami-0135cb179d33fbe3e
 
 Conditions:
-  NotNullSubnetID:
-    !Not [!Equals [!Ref PublicSubnetID, ""]]
+  NotNullSubnetId:
+    !Not [!Equals [!Ref SubnetId, ""]]
   NotNullEc2KeyName:
     !Not [!Equals [!Ref EMREc2KeyName, ""]]
-  NotNullMasterNodeHost: !Not [!Equals [!Ref MasterNodeHost, ""]]
+  NotNullSparkMasterNodeHost: !Not [!Equals [!Ref SparkMasterNodeHost, ""]]
   IsProductMode: !Equals [!Ref Ec2Mode, "product"]
   ValidConfigurationForEc2: !And
-    - !Condition NotNullSubnetID
+    - !Condition NotNullSubnetId
     - !Condition NotNullEc2KeyName
-    - !Condition NotNullMasterNodeHost
+    - !Condition NotNullSparkMasterNodeHost
   IsAssociatedPublicIp: !Equals [!Ref AssociatedPublicIp, "true"]
 
 Resources:
@@ -137,15 +137,15 @@ Resources:
           - IsProductMode
           - !Ref InstanceType
           - !Ref InstanceTypeForTest
-      IamInstanceProfile: !Ref Ec2InstanceProfile
+      IamInstanceProfile: !Ref InstanceProfileId
       NetworkInterfaces:
         - DeviceIndex: 0
           Description: Auto create for Slave01 node in benchmark
           DeleteOnTermination: true
           AssociatePublicIpAddress: !Ref AssociatedPublicIp
-          SubnetId: !Ref PublicSubnetID
+          SubnetId: !Ref SubnetId
           GroupSet:
-            - !Ref SecurityGroupID
+            - !Ref SecurityGroupId
       BlockDeviceMappings:
         - !If
           - IsProductMode
@@ -177,7 +177,7 @@ Resources:
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
               bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
-            - PrivateMasterHost: !Ref MasterNodeHost
+            - PrivateMasterHost: !Ref SparkMasterNodeHost
               WorkerNum: 1
               PrivateBucketFullPath: !Ref BucketFullPath
               PrivateSlaveScriptFileName: !Ref SlaveScriptFileName
@@ -205,15 +205,15 @@ Resources:
           - IsProductMode
           - !Ref InstanceType
           - !Ref InstanceTypeForTest
-      IamInstanceProfile: !Ref Ec2InstanceProfile
+      IamInstanceProfile: !Ref InstanceProfileId
       NetworkInterfaces:
         - DeviceIndex: 0
           Description: Auto create for Slave02 node in benchmark
           DeleteOnTermination: true
           AssociatePublicIpAddress: !Ref AssociatedPublicIp
-          SubnetId: !Ref PublicSubnetID
+          SubnetId: !Ref SubnetId
           GroupSet:
-            - !Ref SecurityGroupID
+            - !Ref SecurityGroupId
       BlockDeviceMappings:
         - !If
           - IsProductMode
@@ -245,7 +245,7 @@ Resources:
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
               bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
-            - PrivateMasterHost: !Ref MasterNodeHost
+            - PrivateMasterHost: !Ref SparkMasterNodeHost
               WorkerNum: 2
               PrivateBucketFullPath: !Ref BucketFullPath
               PrivateSlaveScriptFileName: !Ref SlaveScriptFileName
@@ -274,15 +274,15 @@ Resources:
           - IsProductMode
           - !Ref InstanceType
           - !Ref InstanceTypeForTest
-      IamInstanceProfile: !Ref Ec2InstanceProfile
+      IamInstanceProfile: !Ref InstanceProfileId
       NetworkInterfaces:
         - DeviceIndex: 0
           Description: Auto create for Slave03 node in benchmark
           DeleteOnTermination: true
           AssociatePublicIpAddress: !Ref AssociatedPublicIp
-          SubnetId: !Ref PublicSubnetID
+          SubnetId: !Ref SubnetId
           GroupSet:
-            - !Ref SecurityGroupID
+            - !Ref SecurityGroupId
       BlockDeviceMappings:
         - !If
           - IsProductMode
@@ -314,7 +314,7 @@ Resources:
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
               bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
-            - PrivateMasterHost: !Ref MasterNodeHost
+            - PrivateMasterHost: !Ref SparkMasterNodeHost
               WorkerNum: 3
               PrivateBucketFullPath: !Ref BucketFullPath
               PrivateSlaveScriptFileName: !Ref SlaveScriptFileName
@@ -326,7 +326,7 @@ Resources:
 
 
 Outputs:
-  Slave01Ec2InstanceId:
+  IdOfInstanceSlave01:
     Description: the id of Slave 01 Node Instance if created
     Value: !Ref Ec2InstanceOfSlave01
   Slave01Ec2InstancePrivateIp:
@@ -337,7 +337,7 @@ Outputs:
     Value: !GetAtt Ec2InstanceOfSlave01.PublicIp
     Condition: IsAssociatedPublicIp
 
-  Slave02Ec2InstanceId:
+  IdOfInstanceSlave02:
     Description: the id of Slave 02 Node Instance if created
     Value: !Ref Ec2InstanceOfSlave02
   Slave02Ec2InstancePrivateIp:
@@ -348,7 +348,7 @@ Outputs:
     Value: !GetAtt Ec2InstanceOfSlave02.PublicIp
     Condition: IsAssociatedPublicIp
 
-  Slave03Ec2InstanceId:
+  IdOfInstanceSlave03:
     Description: the id of Slave 03 Node Instance if created
     Value: !Ref Ec2InstanceOfSlave03
   Slave03Ec2InstancePrivateIp:

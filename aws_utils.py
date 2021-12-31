@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from aws import AWS
 from constant.config import Config
@@ -13,12 +12,15 @@ class EngineUtils:
     def __init__(self, config):
         self.aws_instance = AWS(config)
         self.config = config
+        
+    @property
+    def cloud_address(self) -> str:
+        return self.config[Config.CLOUD_ADDR.value]
 
     def launch_aws_kylin(self):
-        cloud_addr = self.get_cloud_addr()
-        kylin_mode = self.config[Config.EC2_MASTER_PARAMS.value]['Ec2KylinMode']
+        cloud_addr = self.get_kylin_address()
         # launch kylin
-        kylin_instance = KylinInstance(host=cloud_addr, port='7070', home=None, mode=kylin_mode)
+        kylin_instance = KylinInstance(host=cloud_addr, port='7070')
         assert kylin_instance.client.await_kylin_start(
             check_action=kylin_instance.client.check_login_state,
             timeout=1800,
@@ -31,27 +33,20 @@ class EngineUtils:
     def alive_workers(self):
         self.aws_instance.alive_workers()
 
-    def scale_aws_worker(self, worker_nums: List, scale_type: str):
-        logger.info(f'Current scaling {scale_type} node: {worker_nums}.')
-        assert self.is_cluster_ready() is True, 'Master node must be ready.'
-        self.aws_instance.scale_up_down(self.config, worker_nums, scale_type)
-        self.aws_instance.after_scale(worker_nums, scale_type)
+    def scale_nodes(self, scale_type: str, node_type: str) -> None:
+        logger.info(f'Current scaling {scale_type} {node_type} nodes.')
+        assert self.is_cluster_ready() is True, 'Cluster nodes must be ready.'
+        self.aws_instance.scale_up_down(self.config, scale_type, node_type)
+        self.aws_instance.after_scale(scale_type, node_type)
 
     def is_cluster_ready(self) -> bool:
-        if self.config[Config.CLOUD_ADDR.value]:
+        if self.cloud_address:
             return True
-        return self.aws_instance.is_aws_cloud_ready()
+        return self.aws_instance.is_cluster_ready
 
-    def get_cloud_addr(self) -> str:
-        """
-        retrieve the kylin and spark master node ip
-        :return: cloud_addr which from the master public ip or private ip
-        """
-        # launch aws cluster
-        if self.config[Config.CLOUD_ADDR.value] is None:
-            cloud_addr = self.aws_instance.aws_cloud()
-        else:
-            cloud_addr = self.config[Config.CLOUD_ADDR.value]
-        # make sure that cloud addr always exists
-        assert cloud_addr is not None, 'cloud address is None, please check.'
-        return cloud_addr
+    def get_kylin_address(self) -> str:
+        kylin_address = self.cloud_address
+        if not kylin_address:
+            kylin_address = self.aws_instance.get_kylin_address()
+        assert kylin_address, f'kylin address is None, please check.'
+        return kylin_address

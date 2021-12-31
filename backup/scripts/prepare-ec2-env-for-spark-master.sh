@@ -50,17 +50,15 @@ function help() {
   logging warn "Usage: ${BASH_SOURCE[0]}
                     --bucket-url /path/to/bucket/without/prefix
                     --region region-for-s3
-                    --db-host db-host-for-kylin
-                    --db-password db-password-for-kylin
-                    --db-user db-user-for-kylin
-                    --zookeeper-host zookeeper-host-for-kylin
-                    --kylin-mode mode-for-kylin[all|query|job]
-                    --waiting-time time-for-start-services
+                    --db-host db-host-for-hive-metadata
+                    --db-password db-password-for-hive-metadata
+                    --db-user db-user-for-hive-metadata
+                    --db-port db-port-for-hive-metadata
                     --local-soft whether-to-use-local-cache+soft-affinity"
   exit 0
 }
 
-if [[ $# -ne 18 ]]; then
+if [[ $# -ne 14 ]]; then
   help
 fi
 
@@ -76,13 +74,8 @@ while [[ $# != 0 ]]; do
     DATABASE_PASSWORD=$2
   elif [[ $1 == "--db-user" ]]; then
     DATABASE_USER=$2
-  elif [[ $1 == "--zookeeper-host" ]]; then
-    ZOOKEEPER_HOST=$2
-  elif [[ $1 == "--kylin-mode" ]]; then
-    # kylin mode in [ 'all', 'query', 'job' ]
-    KYLIN_MODE=$2
-  elif [[ $1 == "--waiting-time" ]]; then
-    WAITING_TIME=$2
+  elif [[ $1 == "--db-port" ]]; then
+    DATABASE_PORT=$2
   elif [[ $1 == "--local-soft" ]]; then
     LOCAL_CACHE_SOFT_AFFINITY=$2
   else
@@ -98,21 +91,13 @@ done
 #### ${SPARK_VERSION:0:1} get 2 from 2.4.7
 HADOOP_VERSION=3.2.0
 SPARK_VERSION=3.1.1
-KYLIN_VERSION=4.0.0
 HIVE_VERSION=2.3.9
 
 LOCAL_CACHE_DIR=/home/ec2-user/ssd
 
 ### File name
-if [[ $LOCAL_CACHE_SOFT_AFFINITY == "false" ]]; then
-  KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}.tar.gz
-  DECOMPRESSED_KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}
-else
-  KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}-soft.tar.gz
-  DECOMPRESSED_KYLIN_PACKAGE=apache-kylin-${KYLIN_VERSION}-bin-spark${SPARK_VERSION:0:1}-soft
-
+if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
   # Prepared the local cache dir for local cache + soft affinity
-
   if [[ ! -d ${LOCAL_CACHE_DIR} ]]; then
       sudo mkdir -p ${LOCAL_CACHE_DIR}
       sudo chmod -R 777 ${LOCAL_CACHE_DIR}
@@ -128,9 +113,6 @@ SPARK_PACKAGE=spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION:0:3}.tgz
 HADOOP_PACKAGE=hadoop-${HADOOP_VERSION}.tar.gz
 HIVE_PACKAGE=apache-hive-${HIVE_VERSION}-bin.tar.gz
 NODE_EXPORTER_PACKAGE=node_exporter-1.3.1.linux-amd64.tar.gz
-
-### Parameter for DB
-CURRENT_HOST=$(hostname -i)
 
 ### Parameter for JDK 1.8
 JDK_PACKAGE=jdk-8u301-linux-x64.tar.gz
@@ -149,7 +131,6 @@ function init_env() {
   HADOOP_HOME=${HADOOP_DIR}/hadoop-${HADOOP_VERSION}
   HIVE_HOME=${HADOOP_DIR}/hive
 
-  KYLIN_HOME=${HOME_DIR}/${DECOMPRESSED_KYLIN_PACKAGE}
   SPARK_HOME=${HADOOP_DIR}/spark
   OUT_LOG=${HOME_DIR}/shell.stdout
 
@@ -177,7 +158,6 @@ export PATH=$HIVE_HOME/bin:$HIVE_HOME/conf:${HADOOP_HOME}/bin:${JAVA_HOME}/bin:$
 
 ### other
 export HOME_DIR=${HOME_DIR}
-export KYLIN_HOME=${KYLIN_HOME}
 export SPARK_HOME=${SPARK_HOME}
 export OUT_LOG=${OUT_LOG}
 EOF
@@ -370,7 +350,7 @@ function init_hive() {
   </property>
   <property>
     <name>javax.jdo.option.ConnectionURL</name>
-    <value>jdbc:mysql://${DATABASE_HOST}:3306/hive?createDatabaseIfNotExist=true&amp;useSSL=false</value>
+    <value>jdbc:mysql://${DATABASE_HOST}:${DATABASE_PORT}/hive?createDatabaseIfNotExist=true&amp;useSSL=false</value>
     <description>JDBC connect string for a JDBC metastore</description>
   </property>
   <property>
@@ -409,30 +389,10 @@ EOF
     aws s3 cp ${PATH_TO_BUCKET}/jars/mysql-connector-java-5.1.40.jar ${HIVE_HOME}/lib/ --region ${CURRENT_REGION}
   fi
 
-  if [[ ! -f ${HOME_DIR}/.inited_hive_metadata ]]; then
-    bash -vx $HIVE_HOME/bin/schematool -dbType mysql -initSchema
-    if [[ $? -ne 0 ]]; then
-      logging error "Init hive metadata failed, please check ..."
-      exit 0
-    fi
-    logging "Hive metadata inited successfully ..."
-    touch ${HOME_DIR}/.inited_hive_metadata
-  fi
-
-  if [[ ! -d ${HIVE_HOME}/logs ]]; then
-    logging info "Making dir ${HIVE_HOME}/logs"
-    mkdir -p $HIVE_HOME/logs
-  fi
-
   logging warn "touch ${HOME_DIR}/.inited_hive ..."
   # make a tag for hive inited
   touch ${HOME_DIR}/.inited_hive
   logging info "Hive is ready ..."
-}
-
-function start_hive() {
-  nohup $HIVE_HOME/bin/hive --service metastore >>$HIVE_HOME/logs/hivemetastorelog.log 2>&1 &
-  logging info "Hive was logging in $HIVE_HOME/logs, you can check ..."
 }
 
 function prepare_spark() {
@@ -530,257 +490,6 @@ function start_spark_master() {
   logging info "Start Spark master successfully ..."
 }
 
-function prepare_kylin() {
-  logging info "Preparing kylin ..."
-
-  if [[ -f ${HOME_DIR}/.prepared_kylin ]]; then
-    logging warn "Kylin already prepared ..."
-    return
-  fi
-
-  if [[ -f ${HOME_DIR}/${KYLIN_PACKAGE} ]]; then
-    logging warn "Kylin package already downloaded, skip download it ..."
-  else
-    logging info "Kylin-${KYLIN_VERSION} downloading ..."
-    aws s3 cp ${PATH_TO_BUCKET}/tar/${KYLIN_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
-    #      # wget cost lot time
-    #      wget https://archive.apache.org/dist/kylin/apache-kylin-${KYLIN_VERSION}/${KYLIN_PACKAGE}
-  fi
-
-  if [[ -d ${HOME_DIR}/${DECOMPRESSED_KYLIN_PACKAGE} ]]; then
-    logging warn "Kylin package already decompress, skip decompress ..."
-  else
-    logging warn "Kylin package decompressing ..."
-    ### unzip kylin tar file
-    tar -zxf ${KYLIN_PACKAGE}
-  fi
-
-  logging info "Kylin inited ..."
-  touch ${HOME_DIR}/.prepared_kylin
-  logging info "Kylin prepared ..."
-}
-
-function init_kylin() {
-  if [[ -f ${HOME_DIR}/.inited_kylin ]]; then
-    logging warn "Kylin already inited ..."
-    return
-  fi
-
-  if [[ ! -d ${KYLIN_HOME}/ext ]]; then
-    ### create dir directory for other dependency used by kylin
-    mkdir -p ${KYLIN_HOME}/ext
-  fi
-
-  if [[ ! -f $KYLIN_HOME/ext/mysql-connector-java-5.1.40.jar ]]; then
-    aws s3 cp ${PATH_TO_BUCKET}/jars/mysql-connector-java-5.1.40.jar $KYLIN_HOME/ext/ --region ${CURRENT_REGION}
-  fi
-
-  if [[ ! -f $KYLIN_HOME/ext/slf4j-log4j12-1.7.25.jar ]]; then
-    cp $HADOOP_HOME/share/hadoop/common/lib/slf4j-log4j12-1.7.25.jar $KYLIN_HOME/ext/
-  fi
-
-  if [[ ! -f $KYLIN_HOME/ext/log4j-1.2.17.jar ]]; then
-    cp $HADOOP_HOME/share/hadoop/common/lib/log4j-1.2.17.jar $KYLIN_HOME/ext/
-  fi
-
-  #Support local cache + soft affinity
-  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
-    if [[ ! -f $KYLIN_HOME/ext/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar ]]; then
-      logging info "Downloading kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar to $KYLIN_HOME/ext/ ..."
-      aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $KYLIN_HOME/ext/ --region ${CURRENT_REGION}
-    fi
-
-    if [[ ! -f $KYLIN_HOME/ext/alluxio-2.6.1-client.jar ]]; then
-      logging info "Downloading alluxio-2.6.1-client.jar to $KYLIN_HOME/ext/ ..."
-      aws s3 cp ${PATH_TO_BUCKET}/jars/alluxio-2.6.1-client.jar $KYLIN_HOME/ext/ --region ${CURRENT_REGION}
-    fi
-  fi
-
-  if [[ ${KYLIN_MODE} == "all" ]]; then
-    cat <<EOF >${KYLIN_HOME}/conf/kylin.properties
-kylin.server.mode=${KYLIN_MODE}
-kylin.metadata.url=kylin_metadata@jdbc,url=jdbc:mysql://${DATABASE_HOST}:3306/kylin,username=root,password=${DATABASE_PASSWORD},maxActive=10,maxIdle=10
-kylin.env.zookeeper-connect-string=${ZOOKEEPER_HOST}
-kylin.env.hdfs-working-dir=${CONFIG_PATH_TO_BUCKET}/working_dir/
-kylin.cube.cubeplanner.enabled=true
-## Build Engine Resource
-kylin.engine.spark-conf.spark.eventLog.dir=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.history.fs.logDirectory=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.master=spark://${CURRENT_HOST}:7077
-
-kylin.engine.spark-conf.spark.executor.cores=3
-kylin.engine.spark-conf.spark.executor.instances=20
-kylin.engine.spark-conf.spark.executor.memory=12GB
-kylin.engine.spark-conf.spark.executor.memoryOverhead=1GB
-
-### support prometheus
-kylin.engine.spark-conf.spark.ui.prometheus.enabled=true
-kylin.engine.spark-conf.spark.executor.processTreeMetrics.enabled=true
-
-## Parquet Column Index
-kylin.engine.spark-conf.spark.hadoop.parquet.page.size=1048576
-kylin.engine.spark-conf.spark.hadoop.parquet.page.row.count.limit=100000
-kylin.engine.spark-conf.spark.hadoop.parquet.block.size=268435456
-kylin.query.spark-conf.spark.hadoop.parquet.filter.columnindex.enabled=true
-
-## Query Engine Resource
-kylin.query.spark-conf.spark.master=spark://${CURRENT_HOST}:7077
-kylin.query.spark-conf.spark.driver.cores=1
-kylin.query.spark-conf.spark.driver.memory=8GB
-kylin.query.spark-conf.spark.driver.memoryOverhead=1G
-kylin.query.spark-conf.spark.executor.instances=30
-kylin.query.spark-conf.spark.executor.cores=2
-kylin.query.spark-conf.spark.executor.memory=7G
-kylin.query.spark-conf.spark.executor.memoryOverhead=1G
-kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
-
-### support prometheus
-kylin.query.spark-conf.spark.ui.prometheus.enabled=true
-kylin.query.spark-conf.spark.executor.processTreeMetrics.enabled=true
-
-## Disable canary
-kylin.canary.sparder-context-canary-enabled=false
-## Query Cache
-kylin.query.cache-enabled=true
-
-EOF
-  elif [[ ${KYLIN_MODE} == "query" ]]; then
-    cat <<EOF >${KYLIN_HOME}/conf/kylin.properties
-# Kylin server mode, valid value [all, query, job]
-kylin.server.mode=${KYLIN_MODE}
-kylin.metadata.url=kylin_metadata@jdbc,url=jdbc:mysql://${DATABASE_HOST}:3306/kylin,username=root,password=${DATABASE_PASSWORD},maxActive=10,maxIdle=10
-kylin.env.zookeeper-connect-string=${ZOOKEEPER_HOST}
-kylin.env.hdfs-working-dir=${CONFIG_PATH_TO_BUCKET}/working_dir/
-## Query Engine Resource
-kylin.query.spark-conf.spark.master=spark://${CURRENT_HOST}:7077
-kylin.query.spark-conf.spark.driver.cores=1
-kylin.query.spark-conf.spark.driver.memory=8GB
-kylin.query.spark-conf.spark.driver.memoryOverhead=1G
-kylin.query.spark-conf.spark.executor.instances=30
-kylin.query.spark-conf.spark.executor.cores=2
-kylin.query.spark-conf.spark.executor.memory=7G
-kylin.query.spark-conf.spark.executor.memoryOverhead=1G
-kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
-
-### support prometheus
-kylin.query.spark-conf.spark.ui.prometheus.enabled=true
-kylin.query.spark-conf.spark.executor.processTreeMetrics.enabled=true
-
-## Disable canary
-kylin.canary.sparder-context-canary-enabled=false
-## Query Cache
-kylin.query.cache-enabled=true
-EOF
-
-  elif [[ ${KYLIN_MODE} == "job" ]]; then
-    cat <<EOF >${KYLIN_HOME}/conf/kylin.properties
-kylin.server.mode=${KYLIN_MODE}
-kylin.metadata.url=kylin_metadata@jdbc,url=jdbc:mysql://${DATABASE_HOST}:3306/kylin,username=root,password=${DATABASE_PASSWORD},maxActive=10,maxIdle=10
-kylin.env.zookeeper-connect-string=${ZOOKEEPER_HOST}
-kylin.env.hdfs-working-dir=${CONFIG_PATH_TO_BUCKET}/working_dir/
-kylin.cube.cubeplanner.enabled=true
-## Build Engine Resource
-kylin.engine.spark-conf.spark.eventLog.dir=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.history.fs.logDirectory=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.master=spark://${CURRENT_HOST}:7077
-
-kylin.engine.spark-conf.spark.executor.cores=3
-kylin.engine.spark-conf.spark.executor.instances=20
-kylin.engine.spark-conf.spark.executor.memory=12GB
-kylin.engine.spark-conf.spark.executor.memoryOverhead=1GB
-
-## Parquet Column Index
-kylin.engine.spark-conf.spark.hadoop.parquet.page.size=1048576
-kylin.engine.spark-conf.spark.hadoop.parquet.page.row.count.limit=100000
-kylin.engine.spark-conf.spark.hadoop.parquet.block.size=268435456
-kylin.query.spark-conf.spark.hadoop.parquet.filter.columnindex.enabled=true
-
-### support prometheus
-kylin.engine.spark-conf.spark.ui.prometheus.enabled=true
-kylin.engine.spark-conf.spark.executor.processTreeMetrics.enabled=true
-EOF
-
-  fi
-
-  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]] && ( [[ ${KYLIN_MODE} == "all" ]] || [[ ${KYLIN_MODE} == "query" ]] ); then
-    cat <<EOF >> ${KYLIN_HOME}/conf/kylin.properties
-kylin.query.spark-conf.spark.executor.extraJavaOptions=-Dhdp.version=current -Dlog4j.configuration=spark-executor-log4j.properties -Dlog4j.debug -Dkylin.hdfs.working.dir=\${kylin.env.hdfs-working-dir} -Dkylin.metadata.identifier=\${kylin.metadata.url.identifier} -Dkylin.spark.category=sparder -Dkylin.spark.identifier={{APP_ID}} -Dalluxio.user.client.cache.dir=${LOCAL_CACHE_DIR}/alluxio-cache-{{APP_ID}}-{{EXECUTOR_ID}}
-
-kylin.query.spark-conf.spark.driver.extraJavaOptions=-Dhdp.version=current -Dalluxio.user.client.cache.dir=${LOCAL_CACHE_DIR}/alluxio-cache-driver
-
-kylin.query.spark-conf.spark.sql.sources.ignoreDataLocality=true
-kylin.query.spark-conf.spark.extraListeners=org.apache.kylin.softaffinity.scheduler.SoftAffinityListener
-kylin.query.spark-conf.spark.hadoop.spark.kylin.local-cache.enabled=true
-kylin.query.spark-conf.spark.kylin.soft-affinity.enabled=true
-kylin.query.spark-conf.spark.kylin.soft-affinity.replications.num=1
-kylin.query.spark-conf.spark.hadoop.io.file.buffer.size=524288
-kylin.query.spark-conf.spark.hadoop.fs.hdfs.impl=org.apache.kylin.cache.fs.kylin.KylinCacheFileSystem
-
-kylin.query.spark-conf.spark.hadoop.fs.s3.impl=org.apache.kylin.cache.fs.kylin.KylinCacheFileSystem
-kylin.query.spark-conf.spark.hadoop.fs.s3a.impl=org.apache.kylin.cache.fs.kylin.KylinCacheFileSystem
-
-kylin.query.spark-conf.spark.hadoop.fs.s3a.experimental.input.fadvise=random
-kylin.query.spark-conf.spark.hadoop.parquet.enable.summary-metadata=false
-kylin.query.spark-conf.spark.sql.parquet.mergeSchema=false
-kylin.query.spark-conf.spark.sql.hive.metastorePartitionPruning=true
-
-
-
-# LOCAL or BUFF
-kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.store.type=LOCAL
-kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.async.restore.enabled=true
-kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.async.write.enabled=true
-kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.async.write.threads=6
-kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.size=20GB
-kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.page.size=1MB
-kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.local.store.file.buckets=1000
-kylin.query.spark-conf.spark.hadoop.alluxio.user.update.file.accesstime.disabled=true
-EOF
-    fi
-
-  logging info "Kylin already inited ..."
-  touch ${HOME_DIR}/.inited_kylin
-  logging info "Kylin is ready ..."
-}
-
-function after_start_kylin() {
-  KYLIN_WEB_LIB_PATH=$KYLIN_HOME/tomcat/webapps/kylin/WEB-INF/lib
-  if [[ ! -f $KYLIN_WEB_LIB_PATH/commons-collections-3.2.2.jar ]]; then
-    cp ${HIVE_HOME}/lib/commons-collections-3.2.2.jar $KYLIN_WEB_LIB_PATH/
-  fi
-
-  if [[ ! -f $KYLIN_WEB_LIB_PATH/commons-configuration-1.3.jar ]]; then
-    aws s3 cp ${PATH_TO_BUCKET}/jars/commons-configuration-1.3.jar $KYLIN_WEB_LIB_PATH/ --region ${CURRENT_REGION}
-  fi
-
-  if [[ ! -f $KYLIN_WEB_LIB_PATH/aws-java-sdk-bundle-1.11.375.jar ]]; then
-    cp $HADOOP_HOME/share/hadoop/common/lib/aws-java-sdk-bundle-1.11.375.jar $KYLIN_WEB_LIB_PATH/
-  fi
-
-  if [[ ! -f $KYLIN_WEB_LIB_PATH/hadoop-aws-3.2.0.jar ]]; then
-    cp $HADOOP_HOME/share/hadoop/common/lib/hadoop-aws-3.2.0.jar $KYLIN_WEB_LIB_PATH/
-  fi
-}
-
-function start_kylin() {
-  ${KYLIN_HOME}/bin/kylin.sh start
-  sleep 30
-}
-
-function sample_for_kylin() {
-  ${KYLIN_HOME}/bin/sample.sh
-  if [[ $? -ne 0 ]]; then
-    logging error "Sample for kylin is failed, please check ..."
-    exit 0
-  else
-    logging info "Sample for kylin is successful, enjoy it ..."
-  fi
-}
-
-function restart_kylin() {
-  ${KYLIN_HOME}/bin/kylin.sh restart
-}
-
 function prepare_node_exporter() {
   logging info "Preparing node_exporter ..."
   if [[ -f ${HOME_DIR}/.prepared_node_exporter ]]; then
@@ -839,31 +548,18 @@ function prepare_packages() {
 
   prepare_hadoop
   init_hadoop
-  # TODO: fix this hard code sleep time
-  # sleep time to ensure mysql service in distribution node is ready
-  sleep ${WAITING_TIME}
   prepare_hive
   init_hive
 
   prepare_spark
   init_spark
 
-  prepare_kylin
-  init_kylin
-
   touch ${HOME_DIR}/.prepared_packages
   logging info "All need packages are ready ..."
 }
 
 function start_services_on_master() {
-  start_hive
   start_spark_master
-
-  # special step for compatible jars, details in after_start_kylin
-  sample_for_kylin
-  start_kylin
-  after_start_kylin
-  restart_kylin
 }
 
 function main() {

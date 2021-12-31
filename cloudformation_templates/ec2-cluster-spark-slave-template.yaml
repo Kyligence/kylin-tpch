@@ -2,16 +2,16 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: Create Other needed worker nodes for ec2 instances and deploy related services, hadoop/spark/zookeeper/hive/jdk/kylin4
 Parameters:
   # Must passed Parameters
-  MasterNodeHost:
+  SparkMasterNodeHost:
     Type: String
     Description: Must be created at pre-step
-  Ec2InstanceProfile:
+  InstanceProfileId:
     Type: String
     Description: Must be created at pre-step
 
-  PublicSubnetID:
+  SubnetId:
     Type: String
-  SecurityGroupID:
+  SecurityGroupId:
     Type: String
   EMREc2KeyName:
     Type: String
@@ -52,7 +52,7 @@ Parameters:
     Description: Url without prefix s3:/
   ScriptFileName:
     Type: String
-    Default: prepare-ec2-env-for-slave.sh
+    Default: prepare-ec2-env-for-spark-slave.sh
   InstanceType:
     Description: EC2 instance type
     Type: String
@@ -98,16 +98,16 @@ Mappings:
       HVMebs: ami-0135cb179d33fbe3e
 
 Conditions:
-  NotNullSubnetID:
-    !Not [!Equals [!Ref PublicSubnetID, ""]]
+  NotNullSubnetId:
+    !Not [!Equals [!Ref SubnetId, ""]]
   NotNullEc2KeyName:
     !Not [!Equals [!Ref EMREc2KeyName, ""]]
-  NotNullMasterNodeHost: !Not [!Equals [!Ref MasterNodeHost, ""]]
+  NotNullSparkMasterNodeHost: !Not [!Equals [!Ref SparkMasterNodeHost, ""]]
   IsProductMode: !Equals [!Ref Ec2Mode, "product"]
   ValidConfigurationForEc2: !And
-    - !Condition NotNullSubnetID
+    - !Condition NotNullSubnetId
     - !Condition NotNullEc2KeyName
-    - !Condition NotNullMasterNodeHost
+    - !Condition NotNullSparkMasterNodeHost
   IsAssociatedPublicIp: !Equals [!Ref AssociatedPublicIp, "true"]
 
 Resources:
@@ -131,15 +131,15 @@ Resources:
               - !Ref WorkerNum
               - Node for kylin4
       InstanceType: !Ref InstanceType
-      IamInstanceProfile: !Ref Ec2InstanceProfile
+      IamInstanceProfile: !Ref InstanceProfileId
       NetworkInterfaces:
         - DeviceIndex: 0
           Description: Scale Slave Node NetworkInterfaces
           DeleteOnTermination: true
           AssociatePublicIpAddress: !Ref AssociatedPublicIp
-          SubnetId: !Ref PublicSubnetID
+          SubnetId: !Ref SubnetId
           GroupSet:
-            - !Ref SecurityGroupID
+            - !Ref SecurityGroupId
       BlockDeviceMappings:
         - !If
           - IsProductMode
@@ -170,7 +170,7 @@ Resources:
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateSlaveScriptFileName} . --region ${PrivateRegion}
               bash ${PrivateSlaveScriptFileName} --bucket-url ${PrivateBucketPath} --master-host ${PrivateMasterHost} --worker-number ${WorkerNum} --region ${PrivateRegion} --waiting-time ${PrivateWaitingTime} --mode ${WorkerMode} --local-soft ${PrivateLocalCacheSoftAffinity}
-            - PrivateMasterHost: !Ref MasterNodeHost
+            - PrivateMasterHost: !Ref SparkMasterNodeHost
               WorkerNum: !Ref WorkerNum
               PrivateBucketFullPath: !Ref BucketFullPath
               PrivateSlaveScriptFileName: !Ref ScriptFileName
@@ -181,7 +181,7 @@ Resources:
               PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
 
 Outputs:
-  SlaveEc2InstanceId:
+  IdOfInstance:
     Description: the id of Slave Instance
     Value: !Ref Ec2InstanceOfSlave
   SlaveEc2InstancePrivateIp:

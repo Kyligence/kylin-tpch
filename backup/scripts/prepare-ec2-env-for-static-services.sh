@@ -53,21 +53,15 @@ EC2_DEFAULT_USER=ec2-user
 
 ### Parameters for Spark and Kylin
 #### ${SPARK_VERSION:0:1} get 2 from 2.4.7
-ZOOKEEPER_VERSION=3.4.13
 GRAFANA_VERSION=8.2.6
+HIVE_VERSION=2.3.9
+HADOOP_VERSION=3.2.0
 
 ### File name
-ZOOKEEPER_PACKAGE=zookeeper-${ZOOKEEPER_VERSION}.tar.gz
-METADADA_FILE=metadata-backup.sql
 PROMETHEUS_PACKAGE=prometheus-2.31.1.linux-amd64.tar.gz
 NODE_EXPORTER_PACKAGE=node_exporter-1.3.1.linux-amd64.tar.gz
-
-### Parameter for DB
-DATABASE_NAME=kylin
-DATABASE_PASSWORD=123456
-CHARACTER_SET_SERVER=utf8mb4
-COLLATION_SERVER=utf8mb4_unicode_ci
-MYSQL_VERSION=5.7
+HIVE_PACKAGE=apache-hive-${HIVE_VERSION}-bin.tar.gz
+HADOOP_PACKAGE=hadoop-${HADOOP_VERSION}.tar.gz
 
 ### Parameter for JDK 1.8
 JDK_PACKAGE=jdk-8u301-linux-x64.tar.gz
@@ -83,8 +77,9 @@ function init_env() {
 
   JAVA_HOME=/usr/local/java
   JRE_HOME=${JAVA_HOME}/jre
-  ZOOKEEPER_HOME=${HADOOP_DIR}/zookeeper
   OUT_LOG=${HOME_DIR}/shell.stdout
+  HADOOP_HOME=${HADOOP_DIR}/hadoop-${HADOOP_VERSION}
+  HIVE_HOME=${HADOOP_DIR}/hive
 
   # extra prometheus env
   PROMETHEUS_HOME=/home/ec2-user/prometheus
@@ -97,15 +92,18 @@ export JAVA_HOME=${JAVA_HOME}
 export JRE_HOME=${JRE_HOME}
 export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
 
-### zookeeper env
-export ZOOKEEPER_HOME=${ZOOKEEPER_HOME}
+### hadoop env
+export HADOOP_HOME=${HADOOP_HOME}
+
+### hive env
+export HIVE_HOME=${HIVE_HOME}
 
 ### prometheus related env
 export PROMETHEUS_HOME=${PROMETHEUS_HOME}
 export NODE_EXPORTER_HOME=${NODE_EXPORTER_HOME}
 
 ### export all path
-export PATH=${JAVA_HOME}/bin:${ZOOKEEPER_HOME}/bin:$PATH
+export PATH=$HIVE_HOME/bin:$HIVE_HOME/conf:${HADOOP_HOME}/bin:${JAVA_HOME}/bin:$PATH
 
 ### other
 export HOME_DIR=${HOME_DIR}
@@ -128,11 +126,15 @@ function help() {
   logging warn "Invalid input."
   logging warn "Usage: ${BASH_SOURCE[0]}
                        --bucket-url /path/to/bucket/without/prefix
-                       --region region-for-current-instance"
+                       --region region-for-current-instance
+                       --db-host host-for-hive-to-access-rds
+                       --db-user user-for-hive-to-access-rds
+                       --db-password password-for-hive-to-access-rds
+                       --db-port port-for-hive-to-access-rds"
   exit 0
 }
 
-if [[ $# -ne 4 ]]; then
+if [[ $# -ne 12 ]]; then
   help
 fi
 
@@ -142,6 +144,14 @@ while [[ $# != 0 ]]; do
     BUCKET_SUFFIX=$2
   elif [[ $1 == "--region" ]]; then
     CURRENT_REGION=$2
+  elif [[ $1 == "--db-host" ]]; then
+    DATABASE_HOST=$2
+  elif [[ $1 == "--db-password" ]]; then
+    DATABASE_PASSWORD=$2
+  elif [[ $1 == "--db-user" ]]; then
+    DATABASE_USER=$2
+  elif [[ $1 == "--db-port" ]]; then
+    DATABASE_PORT=$2
   else
     help
   fi
@@ -150,6 +160,7 @@ while [[ $# != 0 ]]; do
 done
 
 PATH_TO_BUCKET=s3:/${BUCKET_SUFFIX}
+CONFIG_PATH_TO_BUCKET=s3a:/${BUCKET_SUFFIX}
 
 # Main Functions and Steps
 ## prepare jdk env
@@ -187,6 +198,204 @@ function init_jdk() {
   sed -e "s/\ TLSv1,\ TLSv1.1,//g" -i $JAVA_HOME/jre/lib/security/java.security
   logging info "Jdk inited ..."
   touch ${HOME_DIR}/.inited_jdk
+}
+
+function prepare_hadoop() {
+  if [[ -f ${HOME_DIR}/.prepared_hadoop ]]; then
+    logging warn "Hadoop already prepared, skip init ..."
+    return
+  fi
+
+  if [[ -f ${HOME_DIR}/${HADOOP_PACKAGE} ]]; then
+    logging warn "Hadoop package ${HADOOP_PACKAGE} already downloaded, skip download ..."
+  else
+    logging info "Downloading Hadoop package ${HADOOP_PACKAGE} ..."
+    aws s3 cp ${PATH_TO_BUCKET}/tar/${HADOOP_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
+    #      # wget cost lot time
+    #      wget https://archive.apache.org/dist/hadoop/common/hadoop-${HADOOP_VERSION}/${HADOOP_PACKAGE}
+  fi
+
+  if [[ -d ${HOME_DIR}/hadoop-${HADOOP_VERSION} ]]; then
+    logging warn "Hadoop Package decompressed, skip decompress ..."
+  else
+    logging info "Decompress Hadoop package ..."
+    tar -zxf ${HADOOP_PACKAGE}
+  fi
+
+  logging info "Hadoop prepared ..."
+  touch ${HOME_DIR}/.prepared_hadoop
+}
+
+function init_hadoop() {
+  # match correct region endpoints for hadoop's core-site.xml
+  if [[ ${CURRENT_REGION} == "cn-northwest-1" ]]; then
+    S3_ENDPOINT=s3.cn-northwest-1.amazonaws.com.cn
+  elif [[ ${CURRENT_REGION} == "cn-north-1" ]]; then
+    S3_ENDPOINT=s3.cn-north-1.amazonaws.com.cn
+  else
+    S3_ENDPOINT=s3.${CURRENT_REGION}.amazonaws.com
+  fi
+
+  if [[ -f ${HOME_DIR}/.inited_hadoop ]]; then
+    logging warn "Hadoop already inited, skip init ..."
+  else
+    logging info "Init hadoop config ..."
+    # replace jars for hadoop, although it don't need to start
+    cp hadoop-${HADOOP_VERSION}/share/hadoop/tools/lib/aws-java-sdk-bundle-1.11.375.jar hadoop-${HADOOP_VERSION}/share/hadoop/common/lib/
+    cp hadoop-${HADOOP_VERSION}/share/hadoop/tools/lib/hadoop-aws-${HADOOP_VERSION}.jar hadoop-${HADOOP_VERSION}/share/hadoop/common/lib/
+
+    cat <<EOF >${HOME_DIR}/hadoop-${HADOOP_VERSION}/etc/hadoop/core-site.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+	<property>
+	    <name>fs.default.name</name>
+	    <value>${CONFIG_PATH_TO_BUCKET}/working_dir</value>
+	</property>
+  <property>
+    <name>fs.s3a.endpoint</name>
+    <value>${S3_ENDPOINT}</value>
+  </property>
+</configuration>
+EOF
+
+    logging info "Moving hadoop package to ${HADOOP_HOME} ..."
+    mv ${HOME_DIR}/hadoop-${HADOOP_VERSION} ${HADOOP_HOME}
+
+    logging warn "touch ${HOME_DIR}/.inited_hadoop ... "
+    touch ${HOME_DIR}/.inited_hadoop
+  fi
+
+  logging info "Hadoop is ready ..."
+}
+
+function prepare_hive() {
+  logging info "Preparing hive ..."
+  if [[ -f ${HOME_DIR}/.prepared_hive ]]; then
+    logging warn "Hive already prepared, enjoy it."
+    return
+  fi
+
+  if [[ -f ${HOME_DIR}/${HIVE_PACKAGE} ]]; then
+    logging warn "${HIVE_PACKAGE} already downloaded, skip download it ..."
+  else
+    logging info "Downloading ${HIVE_PACKAGE} ..."
+    aws s3 cp ${PATH_TO_BUCKET}/tar/${HIVE_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
+    #      # wget cost lot time
+    #      wget https://downloads.apache.org/hive/hive-${HIVE_VERSION}/${HIVE_PACKAGE}
+  fi
+
+  if [[ -d ${HOME_DIR}/apache-hive-${HIVE_VERSION}-bin ]]; then
+    logging warn "Hive Package already decompressed, skip decompress ..."
+  else
+    logging info "Decompress Hive package ..."
+    tar -zxf ${HIVE_PACKAGE}
+  fi
+
+  if [[ -d ${HIVE_HOME} ]]; then
+    logging warn "Hive package already exists, skip moving ..."
+  else
+    logging info "Moving hive package ${HIVE_PACKAGE%*.*.*} to ${HIVE_HOME} ..."
+    mv ${HIVE_PACKAGE%*.*.*} ${HIVE_HOME}
+    if [[ $? -ne 0 ]]; then
+      logging error " Moving hive package failed, please check ..."
+      exit 0
+    fi
+  fi
+
+  # execute command
+  hive --version
+  if [[ $? -eq 0 ]]; then
+    logging info "Hive ${HIVE_VERSION} is ready ..."
+  else
+    logging error "Hive not prepared well, please check ..."
+    exit 0
+  fi
+
+  logging info "Hive prepared successfully ..."
+  touch ${HOME_DIR}/.prepared_hive
+}
+
+function init_hive() {
+  if [[ -f ${HOME_DIR}/.inited_hive ]]; then
+    logging warn "Hive already init, skip init ..."
+    return
+  fi
+
+  cat <<EOF >${HIVE_HOME}/conf/hive-site.xml
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>javax.jdo.option.ConnectionPassword</name>
+    <value>${DATABASE_PASSWORD}</value>
+    <description>password to use against metastore database</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:mysql://${DATABASE_HOST}:${DATABASE_PORT}/hive?createDatabaseIfNotExist=true&amp;useSSL=false</value>
+    <description>JDBC connect string for a JDBC metastore</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionDriverName</name>
+    <value>com.mysql.jdbc.Driver</value>
+    <description>Driver class name for a JDBC metastore</description>
+  </property>
+  <property>
+    <name>javax.jdo.option.ConnectionUserName</name>
+    <value>${DATABASE_USER}</value>
+    <description>Username to use against metastore database;default is root</description>
+  </property>
+  <property>
+    <name>hive.metastore.schema.verification</name>
+    <value>false</value>
+    <description>
+      Enforce metastore schema version consistency.
+      True: Verify that version information stored in metastore matches with one from Hive jars.  Also disable automatic
+            schema migration attempt. Users are required to manually migrate schema after Hive upgrade which ensures
+            proper metastore schema migration. (Default)
+      False: Warn if the version information stored in metastore doesn't match with one from in Hive jars.
+    </description>
+  </property>
+</configuration>
+EOF
+
+  # resolve jars conflict
+  if [[ ! -d $HIVE_HOME/spark_jar ]]; then
+    mkdir -p $HIVE_HOME/spark_jar
+    mv $HIVE_HOME/lib/spark-* $HIVE_HOME/spark_jar/
+    mv $HIVE_HOME/lib/jackson-module-scala_2.11-2.6.5.jar $HIVE_HOME/spark_jar/
+  fi
+
+  if [[ ! -f ${HIVE_HOME}/lib/mysql-connector-java-5.1.40.jar ]]; then
+    logging warn "${HIVE_HOME}/lib/mysql-connector-java-5.1.40.jar not exist, download it ..."
+    aws s3 cp ${PATH_TO_BUCKET}/jars/mysql-connector-java-5.1.40.jar ${HIVE_HOME}/lib/ --region ${CURRENT_REGION}
+  fi
+
+  if [[ ! -f ${HOME_DIR}/.inited_hive_metadata ]]; then
+    bash -vx $HIVE_HOME/bin/schematool -dbType mysql -initSchema
+    if [[ $? -ne 0 ]]; then
+      logging error "Init hive metadata failed, Maybe it was already initialized, please check ..."
+    else
+      logging info "Hive metadata inited successfully ..."
+    fi
+    touch ${HOME_DIR}/.inited_hive_metadata
+  fi
+
+  if [[ ! -d ${HIVE_HOME}/logs ]]; then
+    logging info "Making dir ${HIVE_HOME}/logs"
+    mkdir -p $HIVE_HOME/logs
+  fi
+
+  logging warn "touch ${HOME_DIR}/.inited_hive ..."
+  # make a tag for hive inited
+  touch ${HOME_DIR}/.inited_hive
+  logging info "Hive is ready ..."
+}
+
+function start_hive_metastore() {
+  nohup $HIVE_HOME/bin/hive --service metastore >> $HIVE_HOME/logs/hivemetastorelog.log 2>&1 &
+  logging info "Hive was logging in $HIVE_HOME/logs, you can check ..."
 }
 
 ## install mysql db with docker
@@ -242,51 +451,6 @@ function prepare_docker() {
   logging info "docker is ready ..."
 }
 
-function prepare_mysql() {
-  logging info "Preparing mysql ..."
-  if [[ -f ${HOME_DIR}/.prepared_mysql ]]; then
-    logging warn "Mysql service already installed, check it."
-    return
-  fi
-
-  start_docker
-
-  if [[ $(sudo docker ps -q -f name=mysql-${MYSQL_VERSION}) ]]; then
-    logging warn "Mysql-${MYSQL_VERSION} already running, skip this ..."
-  else
-    # default user is root !!!
-    sudo docker run --name mysql-${MYSQL_VERSION} \
-      --restart=always \
-      --health-cmd='mysqladmin ping --silent' \
-      -e MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD} \
-      -e MYSQL_DATABASE=${DATABASE_NAME} \
-      -d -p 3306:3306 mysql:${MYSQL_VERSION} \
-      --character-set-server=${CHARACTER_SET_SERVER} \
-      --collation-server=${COLLATION_SERVER}
-
-    if [[ $? -ne 0 ]]; then
-      logging error "Mysql start in docker was failed, please check ..."
-      exit 0
-    fi
-  fi
-  # install mysql server for backup and test
-  # Note: don't need to start
-  if [[ ! -f ${HOME_DIR}/.prepared_mysql_server ]]; then
-    logging warn "mysql server not installed, install it now ..."
-    if [[ ! -f ${HOME_DIR}/mysql57-community-release-el7-8.noarch.rpm ]]; then
-        wget http://repo.mysql.com/mysql57-community-release-el7-8.noarch.rpm
-    fi
-    sudo rpm -ivh mysql57-community-release-el7-8.noarch.rpm
-    sudo yum install mysql -y
-    touch ${HOME_DIR}/.prepared_mysql_server
-  else
-    logging info "mysql server was installed, skip install it ..."
-  fi
-  logging warn "touch ${HOME_DIR}/.prepared_mysql"
-  touch ${HOME_DIR}/.prepared_mysql
-  logging info "Mysql is ready ..."
-}
-
 function start_grafana() {
   logging info "Preparing grafana ..."
   if [[ -f ${HOME_DIR}/.prepared_grafana ]]; then
@@ -310,98 +474,6 @@ function start_grafana() {
   logging warn "touch ${HOME_DIR}/.prepared_grafana"
   touch ${HOME_DIR}/.prepared_grafana
   logging info "Grafana is ready ..."
-}
-
-function prepare_metadata() {
-  # NOTE: if you want to restore metadata, please move the metadata file which named `metadata_backup.sql` to ${PATH_TO_BUCKET}/backup/ec2/
-  logging info "Check history metadata whether exists ..."
-  aws s3 cp ${PATH_TO_BUCKET}/backup/ec2/${METADADA_FILE} ${HOME_DIR} --region ${CURRENT_REGION}
-  if [[ $? -ne 0 ]]; then
-    logging warn "Metadata file: ${METADADA_FILE} not exists, so skip restore step ..."
-    return
-  fi
-
-  logging info "Restoring metadata to mysql ..."
-  # default user is root !
-  mysql -h$(hostname -i) -uroot -p${DATABASE_PASSWORD} <${HOME_DIR}/${METADADA_FILE}
-  logging info "Restored metadata to mysql ..."
-}
-
-function prepare_zookeeper() {
-  logging info "Preparing zookeeper ..."
-  if [[ -f ${HOME_DIR}/.prepared_zookeeper ]]; then
-    logging warn "Zookeeper service already installed, restart it."
-    return
-  fi
-
-  if [[ -f ./${ZOOKEEPER_PACKAGE} ]]; then
-    logging warn "Zookeeper package already download, skip download it"
-  else
-    logging info "Downloading Zookeeper package ${ZOOKEEPER_PACKAGE} ..."
-    aws s3 cp ${PATH_TO_BUCKET}/tar/${ZOOKEEPER_PACKAGE} ${HOME_DIR} --region ${CURRENT_REGION}
-    #      # wget cost lot time
-    #      wget http://archive.apache.org/dist/zookeeper/zookeeper-${ZOOKEEPER_VERSION}/${ZOOKEEPER_PACKAGE}
-  fi
-
-  if [[ -d ${HOME_DIR}/zookeeper-${ZOOKEEPER_VERSION} ]]; then
-    logging warn "Zookeeper Package decompressed, skip decompress ..."
-  else
-    logging info "Decompress Zookeeper package ..."
-    tar -zxf ${ZOOKEEPER_PACKAGE}
-  fi
-
-  logging info "Zookeeper prepared ..."
-  touch ${HOME_DIR}/.prepared_zookeeper
-}
-
-function init_zookeeper() {
-  if [[ -f ${HOME_DIR}/.inited_zookeeper ]]; then
-    logging warn "Zookeeper already inited ..."
-  else
-    logging info "Init Zookeeper config ..."
-    # copy cfg to set fake zk cluster
-    cp zookeeper-${ZOOKEEPER_VERSION}/conf/zoo_sample.cfg zookeeper-${ZOOKEEPER_VERSION}/conf/zoo1.cfg
-    cp zookeeper-${ZOOKEEPER_VERSION}/conf/zoo_sample.cfg zookeeper-${ZOOKEEPER_VERSION}/conf/zoo2.cfg
-    cp zookeeper-${ZOOKEEPER_VERSION}/conf/zoo_sample.cfg zookeeper-${ZOOKEEPER_VERSION}/conf/zoo3.cfg
-
-    for i in {1..3}; do
-      cat <<EOF >zookeeper-${ZOOKEEPER_VERSION}/conf/zoo${i}.cfg
-# zoo${i}.cfg
-tickTime=2000
-initLimit=10
-syncLimit=5
-server.1=localhost:2287:3387
-server.2=localhost:2288:3388
-server.3=localhost:2289:3389
-dataDir=/tmp/zookeeper/zk${i}/data
-dataLogDir=/tmp/zookeeper/zk${i}/log
-clientPort=218${i}
-EOF
-      mkdir -p /tmp/zookeeper/zk${i}/log
-      mkdir -p /tmp/zookeeper/zk${i}/data
-      echo ${i} >>/tmp/zookeeper/zk${i}/data/myid
-    done
-
-    logging info "Moving ${HOME_DIR}/zookeeper-${ZOOKEEPER_VERSION} to ${ZOOKEEPER_HOME} ..."
-    mv ${HOME_DIR}/zookeeper-${ZOOKEEPER_VERSION} ${ZOOKEEPER_HOME}
-
-    logging warn "touch ${HOME_DIR}/.inited_zookeeper ..."
-    touch ${HOME_DIR}/.inited_zookeeper
-  fi
-  logging info "Zookeeper is ready ..."
-}
-
-function start_zookeeper() {
-  for i in {1..3}; do
-    ${ZOOKEEPER_HOME}/bin/zkServer.sh start ${ZOOKEEPER_HOME}/conf/zoo${i}.cfg
-
-    if [[ $? -ne 0 ]]; then
-      logging error "Zookeeper start from zoo${i}.cfg failed, please check ..."
-      exit 0
-    fi
-    ${ZOOKEEPER_HOME}/bin/zkServer.sh status ${ZOOKEEPER_HOME}/conf/zoo${i}.cfg
-  done
-  logging info "Zookeeper started properly ..."
 }
 
 function prepare_prometheus() {
@@ -503,24 +575,25 @@ function prepare_packages() {
   prepare_node_exporter
   init_node_exporter
 
-  prepare_docker
-  prepare_mysql
-  prepare_metadata
+  prepare_hadoop
+  init_hadoop
 
-  prepare_zookeeper
-  init_zookeeper
+  prepare_hive
+  init_hive
 
   touch ${HOME_DIR}/.prepared_packages
   logging info "All need packages are ready ..."
 }
 
 function start_services_on_other() {
-  start_zookeeper
+  start_hive_metastore
+
   # start extra monitor service
   # NOTE: prometheus server will start after all node_exporter on every node started.
   start_node_exporter
 
   # grafana will start at last
+  prepare_docker
   start_grafana
 }
 

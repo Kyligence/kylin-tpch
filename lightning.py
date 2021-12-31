@@ -28,7 +28,6 @@ class LightningHttpClient(BasicHttpClient):
     def set_base_url(self, url):
         self._base_url = url
 
-    # FIXME: fix this kylin status check
     def await_kylin_start(self, check_action=None, timeout=600, check_times=30, **kwargs):
         start_time = time.time()
         already_check_times = 0

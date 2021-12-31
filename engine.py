@@ -1,12 +1,12 @@
-import ast
 import logging
 import os
-from typing import Tuple
-from utils import generate_nodes
 
 import yaml
 
 from aws_utils import EngineUtils
+from constant.client import Client
+from constant.config import Config
+from constant.yaml_files import File
 
 logger = logging.getLogger(__name__)
 
@@ -15,14 +15,11 @@ class Engine:
 
     def __init__(self) -> None:
         d = os.path.dirname(__file__)
-        with open(os.path.join(d, 'kylin_configs.yaml')) as stream:
+        with open(os.path.join(d, File.CONFIG_YAML.value)) as stream:
             config = yaml.safe_load(stream)
         self.config = config
-        self.is_ec2_cluster = self.config['DEPLOY_PLATFORM'] == 'ec2'
+        self.is_ec2_cluster = self.config[Config.DEPLOY_PLATFORM.value] == Client.EC2.value
         self.server_mode = None
-        # default alive workers num is 3, so scaling workers index must be bigger than 3
-        self.default_num = 3
-        self.scale_up_nodes: Tuple = ast.literal_eval(self.config['SCALE_NODES'])
         self.engine_utils = EngineUtils(self.config)
 
     def launch_cluster(self):
@@ -35,29 +32,11 @@ class Engine:
         self.engine_utils.destroy_aws_kylin()
         logger.info('Ec2: destroy useless nodes successfully.')
 
-    def list_alive_workers(self):
+    def list_alive_workers(self) -> None:
         logger.info('Ec2: list alive nodes.')
         self.engine_utils.alive_workers()
         logger.info('Ec2: list alive nodes successfully.')
 
-    def scale_workers(self, scale_type: str):
-        self._validate_scale()
-        workers = generate_nodes(self.scale_up_nodes)
-        self.engine_utils.scale_aws_worker(worker_nums=workers, scale_type=scale_type)
-        logger.info(f'Current scaling {scale_type} total {len(workers)} nodes successfully.')
-
-    def _validate_scale(self):
-        if not self.scale_up_nodes:
-            msg = f'Scale nodes is none, please check.'
-            logger.error(msg)
-            raise Exception(msg)
-
-        if not isinstance(self.scale_up_nodes, tuple):
-            msg = f'Scale nodes type is invalid, please check.'
-            logger.error(msg)
-            raise Exception(msg)
-
-        if len(self.scale_up_nodes) != 2 or self.scale_up_nodes[0] > self.scale_up_nodes[1]:
-            msg = f'Invalid `SCALE_NODES`, please check.'
-            logger.error(msg)
-            raise Exception(msg)
+    def scale_nodes(self, scale_type: str, node_type: str) -> None:
+        self.engine_utils.scale_nodes(scale_type=scale_type, node_type=node_type)
+        logger.info(f'Current scaling {scale_type} {node_type} nodes successfully.')

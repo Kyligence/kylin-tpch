@@ -1,361 +1,989 @@
 import logging
-import os
-import re
 import time
 from ast import literal_eval
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, List, Tuple
 
 import boto3
-from botocore.exceptions import ClientError, WaiterError
+from botocore.exceptions import ClientError, WaiterError, ParamValidationError
 
 from constant.client import Client
+from constant.commands import Commands
 from constant.config import Config
 from constant.yaml_files import File
-from utils import stack_to_map, read_template, expand_stack, scaled_stacks
+from constant.yaml_params import Params
+from utils import read_template, full_path_of_yaml, generate_nodes
 
 logger = logging.getLogger(__name__)
 
 
 class AWSInstance:
     SCALE_STACK_NAME_TEMPLATE = 'ec2-slave-{}'
-    # NOTE: the spaces in template is for prometheus config's indent
-    COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    static_configs:\n    - targets: ["{host}:9100"]' >> /home/ec2-user/prometheus/prometheus.yml """
-    # Special COMMAND_TEMPLATE for spark metrics into prometheus
-    SPARK_MASTER_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/master/prometheus\n    static_configs:\n    - targets: ["{host}:8080"]' >> /home/ec2-user/prometheus/prometheus.yml """
-    SPARK_APPLICATIONS_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/applications/prometheus\n    static_configs:\n    - targets: ["{host}:8080"]' >> /home/ec2-user/prometheus/prometheus.yml """
-    SPARK_DRIVER_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/prometheus\n    static_configs:\n    - targets: ["{host}:4040"]' >> /home/ec2-user/prometheus/prometheus.yml """
-    SPARK_WORKER_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/prometheus\n    static_configs:\n    - targets: ["{host}:4041"]' >> /home/ec2-user/prometheus/prometheus.yml """
-    SPARK_EXECUTORS_COMMAND_TEMPLATE = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/executors/prometheus\n    static_configs:\n    - targets: ["{host}:4040"]' >> /home/ec2-user/prometheus/prometheus.yml """
-
-    cf_client = None
 
     def __init__(self, config):
         # DEPLOY_PLATFORM
         self.config = config
-        self.region = config['AWS_REGION']
-        self.cf_client = boto3.client(Client.CLOUD_FORMATION.value, region_name=self.region)
-        self._init_ec2_env()
-        self.scaled_nodes: Tuple = literal_eval(config['SCALE_NODES']) if config['SCALE_NODES'] else []
-        self.stack_map = expand_stack(self.scaled_nodes) if self.scaled_nodes else stack_to_map
+        # global params
+        self.vpc_id = None
+        self.instance_profile = None
+        self.security_group = None
+        self.subnet_group = None
+        self.subnet_id = None
+        self.db_host = None
 
-    def _init_ec2_env(self):
-        self.ec2_client = boto3.client(Client.EC2.value, region_name=self.region)
-        self.ssm_client = boto3.client('ssm', region_name=self.region)
-        self.cur_dir = os.path.dirname(__file__)
-        self.yaml_path = os.path.join(self.cur_dir, 'cloudformation_templates')
-        self.create_complete_waiter = self.cf_client.get_waiter('stack_create_complete')
-        self.delete_complete_waiter = self.cf_client.get_waiter('stack_delete_complete')
-        self.exists_waiter = self.cf_client.get_waiter('stack_exists')
+    @property
+    def scaled_spark_workers(self) -> Optional[Tuple]:
+        if self.config[Config.SPARK_WORKER_SCALE_NODES.value]:
+            return literal_eval(self.config[Config.SPARK_WORKER_SCALE_NODES.value])
+        return ()
 
+    @property
+    def scaled_spark_workers_stacks(self) -> List:
+        return [Params.SPARK_WORKER_SCALE_STACK_NAME.value.format(num=i)
+                for i in generate_nodes(self.scaled_spark_workers)]
+
+    @property
+    def scaled_kylin_nodes(self) -> Optional[Tuple]:
+        if self.config[Config.KYLIN_SCALE_NODES.value]:
+            return literal_eval(self.config[Config.KYLIN_SCALE_NODES.value])
+        return ()
+
+    @property
+    def scaled_kylin_stacks(self) -> List:
+        return [Params.KYLIN_SCALE_STACK_NAME.value.format(num=i)
+                for i in generate_nodes(self.scaled_kylin_nodes)]
+
+    @property
+    def region(self) -> str:
+        return self.config[Config.AWS_REGION.value]
+
+    @property
+    def cf_client(self):
+        return boto3.client(Client.CLOUD_FORMATION.value, region_name=self.region)
+
+    @property
+    def rds_client(self):
+        return boto3.client(Client.RDS.value, region_name=self.region)
+
+    @property
+    def ec2_client(self):
+        return boto3.client(Client.EC2.value, region_name=self.region)
+
+    @property
+    def ssm_client(self):
+        return boto3.client('ssm', region_name=self.region)
+
+    @property
+    def create_complete_waiter(self):
+        return self.cf_client.get_waiter('stack_create_complete')
+
+    @property
+    def delete_complete_waiter(self):
+        return self.cf_client.get_waiter('stack_delete_complete')
+
+    @property
+    def exists_waiter(self):
+        return self.cf_client.get_waiter('stack_exists')
+
+    @property
+    def db_port(self) -> str:
+        return self.config[Config.DB_PORT.value]
+
+    @property
+    def db_identifier(self) -> str:
+        return self.config[Config.DB_IDENTIFIER.value]
+
+    @property
+    def vpc_stack_name(self) -> str:
+        return self.config[Config.VPC_STACK.value]
+
+    @property
+    def rds_stack_name(self) -> str:
+        return self.config[Config.RDS_STACK.value]
+
+    @property
+    def static_service_stack_name(self) -> str:
+        return self.config[Config.STATIC_SERVICE_STACK.value]
+
+    @property
+    def zk_stack_name(self) -> str:
+        return self.config[Config.ZOOKEEPERS_STACK.value]
+
+    @property
+    def kylin_stack_name(self) -> str:
+        return self.config[Config.KYLIN_STACK.value]
+
+    @property
+    def spark_master_stack_name(self) -> str:
+        return self.config[Config.SPARK_MASTER_STACK.value]
+
+    @property
+    def spark_slave_stack_name(self) -> str:
+        return self.config[Config.SPARK_WORKER_STACK.value]
+
+    @property
+    def path_of_vpc_stack(self) -> str:
+        return full_path_of_yaml(File.VPC_YAML.value)
+
+    @property
+    def path_of_rds_stack(self) -> str:
+        return full_path_of_yaml(File.RDS_YAML.value)
+
+    @property
+    def path_of_static_service_stack(self) -> str:
+        return full_path_of_yaml(File.STATIC_SERVICE_YAML.value)
+
+    @property
+    def path_of_zk_stack(self) -> str:
+        return full_path_of_yaml(File.ZOOKEEPERS_SERVICE_YAML.value)
+
+    @property
+    def path_of_kylin_stack(self) -> str:
+        return full_path_of_yaml(File.KYLIN4_YAML.value)
+
+    @property
+    def path_of_kylin_scale_stack(self) -> str:
+        return full_path_of_yaml(File.KYLIN_SCALE_YAML.value)
+
+    @property
+    def path_of_spark_master_stack(self) -> str:
+        return full_path_of_yaml(File.SPARK_MASTER_YAML.value)
+
+    @property
+    def path_of_spark_slave_stack(self) -> str:
+        return full_path_of_yaml(File.SPARK_WORKER_YAML.value)
+
+    @property
+    def path_of_spark_slave_scaled_stack(self) -> str:
+        return full_path_of_yaml(File.SPARK_WORKER_SCALE_YAML.value)
+
+    @property
+    def bucket_full_path(self) -> str:
+        full_path: str = self.config[Params.S3_FULL_BUCKET_PATH.value]
+        assert full_path.startswith('s3:/'), f'bucket full path must start with s3:/'
+        if full_path.endswith('/'):
+            full_path = full_path.rstrip('/')
+        return full_path
+
+    @property
+    def bucket_path(self) -> str:
+        # remove thre prefix of 's3:/'
+        path = self.bucket_full_path[len('s3:/'):]
+        return path
+
+    def get_vpc_id(self) -> str:
+        if not self.vpc_id:
+            self.vpc_id = self.get_specify_resource_from_output(
+                self.vpc_stack_name, Params.VPC_ID.value
+            )
+            assert self.vpc_id, f'vpc id must not be empty or None.'
+        return self.vpc_id
+
+    def get_instance_profile(self) -> str:
+        if not self.instance_profile:
+            self.instance_profile = self.get_specify_resource_from_output(
+                self.vpc_stack_name, Params.INSTANCE_PROFILE.value
+            )
+        return self.instance_profile
+
+    def get_subnet_id(self) -> str:
+        if not self.subnet_id:
+            self.subnet_id = self.get_specify_resource_from_output(self.vpc_stack_name, Params.SUBNET_ID.value)
+            assert self.subnet_id, 'subnet id must not be empty or None.'
+        return self.subnet_id
+
+    def get_subnet_group(self) -> str:
+        if not self.subnet_group:
+            self.subnet_group = self.get_specify_resource_from_output(
+                self.vpc_stack_name, Params.SUBNET_GROUP_NAME.value
+            )
+            assert self.subnet_group, 'subnet group must not be empty or None.'
+        return self.subnet_group
+
+    def get_db_host(self) -> str:
+        if not self.db_host:
+            self.db_host = self.get_rds_describe()['Endpoint']['Address']
+            assert self.db_host, 'db_host must not be empty or None.'
+        return self.db_host
+
+    def get_security_group_id(self) -> str:
+        if not self.security_group:
+            self.security_group = self.get_specify_resource_from_output(
+                self.vpc_stack_name, Params.SECURITY_GROUP.value
+            )
+            assert self.security_group, f'security_group_id must not be empty or None.'
+        return self.security_group
+
+    def get_instance_id(self, stack_name: str) -> str:
+        if not self.is_stack_complete(stack_name):
+            return ""
+        return self.get_specify_resource_from_output(stack_name, Params.INSTANCE_ID.value)
+
+    def get_instance_ids_of_slaves_stack(self) -> List:
+        return [
+            self.get_specify_resource_from_output(
+                self.spark_slave_stack_name, f'IdOfInstanceOfSlave0{i}'
+            )
+            for i in range(1, 4)
+        ]
+
+    # ============ VPC Services Start ============
     def create_vpc_stack(self) -> Optional[Dict]:
-        if self._stack_complete(self.config[Config.VPC_STACK.value]):
-            logger.warning(f"{self.config[Config.VPC_STACK.value]} already created complete.")
+        if self.is_stack_complete(self.vpc_stack_name):
             return
+        params: Dict = self.config[Config.EC2_VPC_PARAMS.value]
         resp = self.create_stack(
-            stack_name=self.config[Config.VPC_STACK.value],
-            file_path=os.path.join(self.yaml_path, File.VPC_YAML.value),
-            params={}
+            stack_name=self.vpc_stack_name,
+            file_path=self.path_of_vpc_stack,
+            params=params,
+            is_capability=True
         )
         return resp
 
     def terminate_vpc_stack(self) -> Optional[Dict]:
-        if self._stack_delete_complete(self.config[Config.VPC_STACK.value]):
-            logger.warning(f"{self.config[Config.VPC_STACK.value]} already terminated complete.")
-            return
-
-        resp = self.delete_stack(self.config[Config.VPC_STACK.value])
+        resp = self.terminate_stack_by_name(self.vpc_stack_name)
         return resp
 
-    def create_distribution_stack(self) -> Optional[Dict]:
-        if self._stack_complete(self.config[Config.DISTRIBUTION_STACK.value]):
-            logger.warning(f"{self.config[Config.DISTRIBUTION_STACK.value]} already created complete.")
+    # ============ VPC Services End ============
+
+    # ============ RDS Services Start ============
+    def get_rds_describe(self) -> Optional[Dict]:
+        if not self.db_identifier:
+            raise Exception(f'{Config.DB_IDENTIFIER.value} must not be empty or None.')
+        if not self.is_rds_exists():
             return
-        if not self._stack_complete(self.config[Config.VPC_STACK.value]):
-            logger.warning(f"{self.config[Config.VPC_STACK.value]} Must be created complete "
-                           f"before create {self.config[Config.DISTRIBUTION_STACK.value]}.")
-            raise Exception(f"{self.config[Config.VPC_STACK.value]} Must be created complete "
-                            f"before create {self.config[Config.DISTRIBUTION_STACK.value]}.")
-        # Note: the stack name must be pre-step's
-        params: dict = self._merge_params(
-            stack_name=self.config[Config.VPC_STACK.value],
-            param_name=Config.EC2_DISTRIBUTION_PARAMS.value,
-            config=self.config
-        )
+        describe_rds: Dict = self.rds_client.describe_db_instances(DBInstanceIdentifier=self.db_identifier)
+        db_instances: List = describe_rds['DBInstances']
+        assert len(db_instances) == 1, f'the identifier of RDS must exist only one.'
+        return db_instances[0]
+
+    def is_rds_exists(self) -> bool:
+        try:
+            self.rds_client.describe_db_instances(DBInstanceIdentifier=self.db_identifier)
+        except self.rds_client.exceptions.DBInstanceNotFoundFault as ex:
+            logger.warning(ex.response['Error']['Message'])
+            return False
+        return True
+
+    def create_rds_stack(self) -> Optional[Dict]:
+        if self.is_stack_complete(self.rds_stack_name):
+            return
+        if self.is_rds_exists():
+            logger.warning(f'db {self.db_identifier} already exists.')
+            return
+        params: Dict = self.config[Config.EC2_RDS_PARAMS.value]
+        # update needed params
+        params[Params.SUBNET_GROUP_NAME.value] = self.get_subnet_group()
+        params[Params.SECURITY_GROUP.value] = self.get_security_group_id()
         resp = self.create_stack(
-            stack_name=self.config[Config.DISTRIBUTION_STACK.value],
-            file_path=os.path.join(self.yaml_path, File.DISTRIBUTION_YAML.value),
+            stack_name=self.rds_stack_name,
+            file_path=self.path_of_rds_stack,
             params=params,
-            capability='CAPABILITY_NAMED_IAM'
         )
         return resp
 
-    def terminate_distribution_stack(self) -> Optional[Dict]:
-        if self._stack_delete_complete(self.config[Config.DISTRIBUTION_STACK.value]):
-            logger.warning(f"{self.config[Config.DISTRIBUTION_STACK.value]} already terminated complete.")
-            return
-        self.backup_metadata_before_ec2_terminate(
-            stack_name=self.config[Config.DISTRIBUTION_STACK.value],
-            config=self.config
-        )
-        resp = self.delete_stack(stack_name=self.config[Config.DISTRIBUTION_STACK.value])
+    def terminate_rds_stack(self) -> Optional[Dict]:
+        # Note: terminated rds will not delete it, user can delete db manually.
+        resp = self.terminate_stack_by_name(self.rds_stack_name)
         return resp
 
-    def create_master_stack(self) -> Optional[Dict]:
-        if self._stack_complete(self.config[Config.MASTER_STACK.value]):
-            logger.warning(f"{self.config[Config.MASTER_STACK.value]} already created complete.")
-            return
-        if not self._stack_complete(self.config[Config.DISTRIBUTION_STACK.value]):
-            logger.warning(f"{self.config[Config.DISTRIBUTION_STACK.value]} Must be created complete "
-                           f"before create {self.config[Config.MASTER_STACK.value]}.")
-            raise Exception(f"{self.config[Config.DISTRIBUTION_STACK.value]} Must be created complete "
-                            f"before create {self.config[Config.MASTER_STACK.value]}.")
-        # Note: the stack name must be pre-step's
-        params: dict = self._merge_params(
-            stack_name=self.config[Config.DISTRIBUTION_STACK.value],
-            param_name=Config.EC2_MASTER_PARAMS.value,
-            config=self.config,
-        )
-        resp = self.create_stack(
-            stack_name=self.config[Config.MASTER_STACK.value],
-            file_path=os.path.join(self.yaml_path, File.MASTER_YAML.value),
-            params=params
-        )
-        return resp
+    # ============ RDS Services End ============
 
-    def terminate_master_stack(self) -> Optional[Dict]:
-        if self._stack_delete_complete(self.config[Config.MASTER_STACK.value]):
-            logger.warning(f"{self.config[Config.MASTER_STACK.value]} already terminated complete.")
-            return
-
-        resp = self.delete_stack(stack_name=self.config[Config.MASTER_STACK.value])
-        return resp
-
-    def create_slave_stack(self) -> Optional[Dict]:
-        if self._stack_complete(self.config[Config.SLAVE_STACK.value]):
-            logger.warning(f"{self.config[Config.SLAVE_STACK.value]} already created complete.")
-            return
-        if not self._stack_complete(self.config[Config.MASTER_STACK.value]):
-            logger.warning(f"{self.config[Config.MASTER_STACK.value]} Must be created complete "
-                           f"before create {self.config[Config.SLAVE_STACK.value]}.")
-            raise Exception(f"{self.config[Config.MASTER_STACK.value]} Must be created complete "
-                            f"before create {self.config[Config.SLAVE_STACK.value]}.")
-        # Note: the stack name must be pre-step's
-        params: dict = self._merge_params(
-            stack_name=self.config[Config.MASTER_STACK.value],
-            param_name=Config.EC2_SLAVE_PARAMS.value,
-            config=self.config,
-        )
-        resp = self.create_stack(
-            stack_name=self.config[Config.SLAVE_STACK.value],
-            file_path=os.path.join(self.yaml_path, File.SLAVE_YAML.value),
-            params=params
-        )
-        return resp
-
-    def terminate_slave_stack(self) -> Optional[Dict]:
-        if self._stack_delete_complete(self.config[Config.SLAVE_STACK.value]):
-            logger.warning(f"{self.config[Config.SLAVE_STACK.value]} already terminated complete.")
-            return
-
-        resp = self.delete_stack(stack_name=self.config[Config.SLAVE_STACK.value])
-        return resp
-
-    def backup_metadata_before_ec2_terminate(self, stack_name: str, config: dict) -> Optional[Dict]:
-        if stack_name != config[Config.DISTRIBUTION_STACK.value]:
-            logger.warning(f"Only {config[Config.DISTRIBUTION_STACK.value]} should backup before terminate.")
-            return
-
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-
-        if self.is_ec2_instance_stopped(instance_id):
-            msg = f'Current instance {instance_id} of {stack_name} is not running, ' \
-                  f'please start the instance to backup metadata.'
+    # ============ Static Services Start ============
+    def create_static_service_stack(self) -> Optional[Dict]:
+        if not self.is_rds_ready():
+            msg = f'rds {self.db_identifier} is not ready, please check.'
             logger.warning(msg)
             raise Exception(msg)
 
-        tn = time.time_ns()
-        backup_command = f'mysqldump -h$(hostname -i) -uroot -p123456 --databases kylin hive ' \
-                         f'--add-drop-database >  /home/ec2-user/metadata-backup-{tn}.sql'
+        if self.is_stack_complete(self.static_service_stack_name):
+            return
+        params: Dict = self.config[Config.EC2_STATIC_SERVICES_PARAMS.value]
+        # update needed params
+        params = self.update_basic_params(params)
+        params[Params.DB_HOST.value] = self.get_db_host()
 
-        self.exec_script_instance_and_return(name_or_id=instance_id, script=backup_command)
-        cp_to_s3_command = f"aws s3 cp /home/ec2-user/metadata-backup-{tn}.sql {config['BackupMetadataBucketFullPath']} " \
-                           f"--region {config['AWS_REGION']}"
-        self.exec_script_instance_and_return(name_or_id=instance_id, script=cp_to_s3_command)
-
-    def create_stack(self, stack_name: str, file_path: str, params: dict, capability: str = None) -> Dict:
-        if capability:
-            resp = self.cf_client.create_stack(
-                StackName=stack_name,
-                TemplateBody=read_template(file_path),
-                Parameters=[{'ParameterKey': k, 'ParameterValue': v} for k, v in params.items()],
-                Capabilities=[capability]
-            )
-        else:
-            resp = self.cf_client.create_stack(
-                StackName=stack_name,
-                TemplateBody=read_template(file_path),
-                Parameters=[{'ParameterKey': k, 'ParameterValue': v} for k, v in params.items()],
-            )
-
-        assert self._stack_complete(stack_name=stack_name), \
-            f"Stack {stack_name} not create complete, pls check."
+        resp = self.create_stack(
+            stack_name=self.static_service_stack_name,
+            file_path=self.path_of_static_service_stack,
+            params=params
+        )
         return resp
+
+    def terminate_static_service_stack(self) -> Optional[Dict]:
+        resp = self.terminate_stack_by_name(self.static_service_stack_name)
+        return resp
+
+    def get_static_services_instance_id(self) -> Optional[str]:
+        if not self.is_stack_complete(self.static_service_stack_name):
+            return
+        return self.get_specify_resource_from_output(self.static_service_stack_name, Params.INSTANCE_ID.value)
+
+    def get_static_services_private_ip(self) -> Optional[str]:
+        if not self.is_stack_complete(self.static_service_stack_name):
+            return
+        return self.get_specify_resource_from_output(
+            self.static_service_stack_name, Params.STATIC_SERVICES_PRIVATE_IP.value)
+
+    def get_static_services_public_ip(self) -> Optional[str]:
+        if not self.is_stack_complete(self.static_service_stack_name):
+            return
+        return self.get_specify_resource_from_output(
+            self.static_service_stack_name, Params.STATIC_SERVICES_PUBLIC_IP.value)
+
+    def get_static_services_basic_msg(self) -> Optional[str]:
+        if not self.is_stack_complete(self.static_service_stack_name):
+            return
+        res = Params.STATIC_SERVICES_NAME.value + '\t' \
+          + self.get_static_services_instance_id() + '\t' \
+          + self.get_static_services_private_ip() + '\t' \
+          + self.get_static_services_public_ip()
+        return res
+
+    # ============ Static Services End ============
+
+    # ============ Zookeeper Services Start ============
+    def get_instance_ids_of_zks_stack(self) -> List:
+        return [
+            self.get_specify_resource_from_output(
+                self.zk_stack_name, Params.ZOOKEEPER_INSTANCE_ID.value.format(num=i)
+            )
+            for i in range(1, 4)
+        ]
+
+    def get_instance_ips_of_zks_stack(self) -> List:
+        return [self.get_specify_resource_from_output(
+            self.zk_stack_name, Params.ZOOKEEPER_IP.value.format(num=i))
+            for i in range(1, 4)
+        ]
+
+    def create_zk_stack(self) -> Optional[Dict]:
+        if self.is_stack_complete(self.zk_stack_name):
+            return
+        params: Dict = self.config[Config.EC2_ZOOKEEPERS_PARAMS.value]
+        # update needed params
+        params = self.update_basic_params(params)
+
+        resp = self.create_stack(
+            stack_name=self.zk_stack_name,
+            file_path=self.path_of_zk_stack,
+            params=params
+        )
+        return resp
+
+    def terminate_zk_stack(self) -> Optional[Dict]:
+        resp = self.terminate_stack_by_name(self.zk_stack_name)
+        return resp
+
+    def after_create_zk_cluster(self) -> None:
+        zk_ips = self.get_instance_ips_of_zks_stack()
+        zk_ids = self.get_instance_ids_of_zks_stack()
+        # Check related instances status before refresh zks and start them
+        for zk_id in zk_ids:
+            assert self.is_ec2_instance_running(zk_id), f'Instance {zk_id} is not running, please start it first.'
+
+        # refresh zk cluster cfg, because the zk cfg was not included
+        self.refresh_zks_cfg(zk_ips=zk_ips, zk_ids=zk_ids)
+        self.start_zks(zk_ids=zk_ids, zk_ips=zk_ips)
+
+    def refresh_zks_cfg(self, zk_ips: List, zk_ids: List) -> None:
+        assert len(zk_ips) == 3, f'Initialized zookeeper ips num is 3, not {len(zk_ips)}.'
+        assert len(zk_ids) == 3, f'Initialized zookeeper ids num is 3, not {len(zk_ids)}.'
+        configured_zks = self.configured_zks_cfg(zk_ids=zk_ids, zk_ips=zk_ips)
+        if self.is_configured_zks(configured_zks):
+            logger.warning('Zookeepers already configured, skip configure.')
+            return
+        need_to_configure_zks = [zk_id for zk_id in zk_ids if zk_id not in configured_zks]
+        refresh_command = Commands.ZKS_CFG_COMMAND.value.format(host1=zk_ips[0], host2=zk_ips[1], host3=zk_ips[2])
+        for zk_id in need_to_configure_zks:
+            self.exec_script_instance_and_return(name_or_id=zk_id, script=refresh_command)
+
+    @staticmethod
+    def is_configured_zks(configured_zks: List) -> bool:
+        return len(configured_zks) == 3
+
+    def configured_zks_cfg(self, zk_ids: List, zk_ips: List) -> List:
+        check_command = Commands.ZKS_CHECK_CONFIGURED_COMMAND.value
+        configured_instances = []
+        for zk_id, zk_ip in zip(zk_ids, zk_ips):
+            resp = self.exec_script_instance_and_return(zk_id, check_command.format(host=zk_ip))
+            if resp['StandardOutputContent'] == '0\n':
+                logger.warning(f'Instance: {zk_id} which ip is {zk_ip} already configured zoo.cfg.')
+                configured_instances.append(zk_id)
+        return configured_instances
+
+    def start_zks(self, zk_ids: List, zk_ips: List) -> None:
+        assert len(zk_ids) == 3, f'Expected to start 3 zookeepers, not {len(zk_ids)}.'
+        started_zks = self.started_zks(zk_ids=zk_ids, zk_ips=zk_ips)
+        if self.is_started_zks(started_zks=started_zks):
+            logger.warning('Zookeepers already started.')
+            return
+
+        need_to_start_zks = [zk_id for zk_id in zk_ids if zk_id not in started_zks]
+        start_zk_command = Commands.ZKS_START_COMMAND.value
+        for zk_id in need_to_start_zks:
+            self.exec_script_instance_and_return(name_or_id=zk_id, script=start_zk_command)
+        logger.info('Start zookeepers successfully.')
+
+    @staticmethod
+    def is_started_zks(started_zks: List) -> bool:
+        return len(started_zks) == 3
+
+    def started_zks(self, zk_ids: List, zk_ips: List) -> List:
+        check_command = Commands.ZKS_CHECK_STARTED_COMMAND.value
+        started_instances = []
+        for zk_id, zk_ip in zip(zk_ids, zk_ips):
+            resp = self.exec_script_instance_and_return(zk_id, check_command)
+            if resp['StandardOutputContent'] == '0\n':
+                logger.warning(f'Instance: {zk_id} which ip is {zk_ip} already started.')
+                started_instances.append(zk_id)
+        return started_instances
+
+    def get_zookeepers_host(self) -> str:
+        zk_ips = self.get_instance_ips_of_zks_stack()
+        res = ','.join([zk_ip + ':2181' for zk_ip in zk_ips])
+        return res
+
+    def get_zks_basic_msg(self) -> List:
+        if not self.is_stack_complete(self.zk_stack_name):
+            return []
+
+        res = [
+            Params.ZOOKEEPER_NAME.value.format(num=i) + '\t'
+            + self.get_specify_resource_from_output(
+                self.zk_stack_name, Params.ZOOKEEPER_INSTANCE_ID.value.format(num=i)) + '\t'
+            + self.get_specify_resource_from_output(self.zk_stack_name, Params.ZOOKEEPER_IP.value.format(num=i)) + '\t'
+            + self.get_specify_resource_from_output(self.zk_stack_name, Params.ZOOKEEPER_PUB_IP.value.format(num=i))
+            for i in range(1, 4)
+        ]
+        return res
+
+    # ============ Zookeeper Services End ============
+
+    # ============ kylin Services Start ============
+    def create_kylin_stack(self) -> Optional[Dict]:
+        if self.is_stack_complete(self.kylin_stack_name):
+            return
+
+        params: Dict = self.config[Config.EC2_KYLIN4_PARAMS.value]
+        params = self.update_basic_params(params)
+        # update extra params
+        params[Params.SPARK_MASTER_HOST.value] = self.get_spark_master_host()
+        params[Params.ZOOKEEPER_HOSTS.value] = self.get_zookeepers_host()
+        params[Params.DB_HOST.value] = self.get_db_host()
+
+        resp = self.create_stack(
+            stack_name=self.kylin_stack_name,
+            file_path=self.path_of_kylin_stack,
+            params=params
+        )
+        return resp
+
+    def terminate_kylin_stack(self) -> Optional[Dict]:
+        resp = self.terminate_stack_by_name(self.kylin_stack_name)
+        return resp
+
+    def get_kylin_private_ip(self) -> Optional[str]:
+        return self._get_kylin_private_ip(self.kylin_stack_name)
+
+    def get_scaled_kylin_private_ip(self, stack_name: str) -> Optional[str]:
+        return self._get_kylin_private_ip(stack_name)
+
+    def _get_kylin_private_ip(self, stack_name: str) -> str:
+        if not self.is_stack_complete(stack_name):
+            return ""
+        return self.get_specify_resource_from_output(stack_name, Params.KYLIN4_PRIVATE_IP.value)
+
+    def get_kylin_public_ip(self) -> Optional[str]:
+        if not self.is_stack_complete(self.kylin_stack_name):
+            return
+        return self.get_specify_resource_from_output(self.kylin_stack_name, Params.KYLIN4_PUBLIC_IP.value)
+
+    def get_kylin_instance_id(self) -> Optional[str]:
+        if not self.is_stack_complete(self.kylin_stack_name):
+            return
+        return self.get_specify_resource_from_output(self.kylin_stack_name, Params.INSTANCE_ID.value)
+
+    def get_kylin_basic_msg(self) -> Optional[str]:
+        if not self.is_stack_complete(self.static_service_stack_name):
+            return
+        res = Params.KYLIN_NAME.value + '\t' \
+              + self.get_kylin_instance_id() + '\t' \
+              + self.get_kylin_private_ip() + '\t' \
+              + self.get_kylin_public_ip()
+        return res
+
+    def get_scaled_kylin_private_ip(self, stack_name: str) -> Optional[str]:
+        if not self.is_stack_complete(stack_name):
+            return
+        return self.get_specify_resource_from_output(stack_name, Params.KYLIN4_PRIVATE_IP.value)
+
+    def get_scaled_kylin_public_ip(self, stack_name: str) -> Optional[str]:
+        if not self.is_stack_complete(stack_name):
+            return ""
+        return self.get_specify_resource_from_output(stack_name, Params.KYLIN4_PUBLIC_IP.value)
+
+    def get_scaled_kylin_basic_msg(self) -> List:
+        msgs = []
+        for stack in self.scaled_kylin_stacks:
+            if not self.is_stack_complete(stack):
+                continue
+
+            instance_id = self.get_instance_id(stack)
+            private_ip = self.get_scaled_kylin_private_ip(stack)
+            public_ip = self.get_scaled_kylin_public_ip(stack)
+            msg = stack + '\t' + instance_id + '\t' + private_ip + '\t' + public_ip + '\t'
+            msgs.append(msg)
+        return msgs
+
+    def scale_up_kylin(self, kylin_num: int) -> Optional[Dict]:
+        """
+        add kylin node
+        """
+        stack_name = Params.KYLIN_SCALE_STACK_NAME.value.format(num=kylin_num)
+        self._validate_kylin_scale(stack_name)
+
+        if self.is_stack_complete(stack_name):
+            return
+
+        params: Dict = self.config[Config.EC2_KYLIN4_SCALE_PARAMS.value]
+        # update extra params
+        params[Params.SPARK_MASTER_HOST.value] = self.get_spark_master_host()
+        params[Params.ZOOKEEPER_HOSTS.value] = self.get_zookeepers_host()
+        params[Params.DB_HOST.value] = self.get_db_host()
+
+        resp = self.create_stack(
+            stack_name=stack_name,
+            file_path=self.path_of_kylin_stack,
+            params=params
+        )
+
+        return resp
+
+    def scale_down_kylin(self, kylin_num: int) -> Optional[Dict]:
+        stack_name = Params.SPARK_WORKER_SCALE_STACK_NAME.value.format(num=kylin_num)
+        self._validate_kylin_scale(stack_name)
+        # before terminate and delete stack, the worker should be decommissioned.
+        resp = self.terminate_stack_by_name(stack_name)
+        return resp
+
+    # ============ kylin Services End ============
+
+    # ============ Spark Master Services Start ============
+    def get_spark_master_host(self) -> Optional[str]:
+        if not self.is_stack_complete(self.spark_master_stack_name):
+            return
+
+        return self.get_specify_resource_from_output(self.spark_master_stack_name, Params.SPARK_MASTER_HOST.value)
+
+    def get_spark_master_public_ip(self) -> Optional[str]:
+        if not self.is_stack_complete(self.spark_master_stack_name):
+            return
+
+        return self.get_specify_resource_from_output(self.spark_master_stack_name, Params.SPARK_PUB_IP.value)
+
+    def create_spark_master_stack(self) -> Optional[Dict]:
+        if self.is_stack_complete(self.spark_master_stack_name):
+            return
+
+        params: Dict = self.config[Config.EC2_SPARK_MASTER_PARAMS.value]
+        # update needed params
+        params = self.update_basic_params(params)
+        params[Params.DB_HOST.value] = self.get_db_host()
+        resp = self.create_stack(
+            stack_name=self.spark_master_stack_name,
+            file_path=self.path_of_spark_master_stack,
+            params=params
+        )
+        return resp
+
+    def terminate_spark_master_stack(self) -> Optional[Dict]:
+        resp = self.terminate_stack_by_name(self.spark_master_stack_name)
+        return resp
+
+    def start_spark_master(self) -> None:
+        spark_master_id = self.get_instance_id(self.spark_master_stack_name)
+        if not self.is_ec2_instance_running(spark_master_id):
+            msg = f'Instance of spark master{spark_master_id} was not running, please start it first.'
+            logger.error(msg)
+            raise Exception(msg)
+
+        start_command = Commands.START_SPARK_MASTER_COMMAND.value
+        self.exec_script_instance_and_return(name_or_id=spark_master_id, script=start_command)
+
+    def get_spark_master_instance_id(self) -> Optional[str]:
+        if not self.is_stack_complete(self.spark_master_stack_name):
+            return
+
+        return self.get_specify_resource_from_output(self.spark_master_stack_name, Params.INSTANCE_ID.value)
+
+    def get_spark_master_msg(self) -> Optional[str]:
+        if not self.is_stack_complete(self.spark_master_stack_name):
+            return
+        res = Params.SPARK_MASTER_NAME.value + '\t' \
+              + self.get_spark_master_instance_id() + '\t' \
+              + self.get_spark_master_host() + '\t' \
+              + self.get_spark_master_public_ip()
+        return res
+    # ============ Spark Master Services End ============
+
+    # ============ Spark Slave Services Start ============
+    def create_spark_slave_stack(self) -> Optional:
+        if not self.is_stack_complete(self.spark_master_stack_name):
+            msg = f'Spark master {self.spark_master_stack_name} must be created before create spark slaves.'
+            logger.error(msg)
+            raise Exception(msg)
+
+        if self.is_stack_complete(self.spark_slave_stack_name):
+            return
+
+        params: Dict = self.config[Config.EC2_SPARK_WORKER_PARAMS.value]
+        params = self.update_basic_params(params)
+        params[Params.SPARK_MASTER_HOST.value] = self.get_spark_master_host()
+
+        resp = self.create_stack(
+            stack_name=self.spark_slave_stack_name,
+            file_path=self.path_of_spark_slave_stack,
+            params=params
+        )
+        return resp
+
+    def terminate_spark_slave_stack(self) -> Optional[Dict]:
+        resp = self.terminate_stack_by_name(self.spark_slave_stack_name)
+        return resp
+
+    def get_instance_ids_of_spark_slave_stack(self) -> Optional[List]:
+        if not self.is_stack_complete(self.spark_slave_stack_name):
+            return
+        return [
+            self.get_specify_resource_from_output(
+                self.spark_slave_stack_name, Params.SPARK_WORKER_ID.value.format(num=i))
+            for i in range(1, 4)
+        ]
+
+    def get_instance_ips_of_spark_slaves_stack(self) -> Optional[List]:
+        if not self.is_stack_complete(self.spark_slave_stack_name):
+            return
+        return [
+            self.get_specify_resource_from_output(
+                self.spark_slave_stack_name, Params.SPARK_WORKER_PRIVATE_IP.value.format(num=i))
+            for i in range(1, 4)
+        ]
+
+    def get_scaled_spark_worker_private_ip(self, stack_name: str) -> Optional[str]:
+        if not self.is_stack_complete(stack_name):
+            return
+        return self.get_specify_resource_from_output(stack_name, Params.SPARK_SCALED_WORKER_PRIVATE_IP.value)
+
+    def get_scaled_spark_worker_public_ip(self, stack_name: str) -> Optional[str]:
+        if not self.is_stack_complete(stack_name):
+            return
+        return self.get_specify_resource_from_output(stack_name, Params.SPARK_SCALED_WORKER_PUBLIC_IP.value)
+
+    def get_spark_slaves_basic_msg(self) -> List:
+        if not self.is_stack_complete(self.spark_slave_stack_name):
+            return []
+
+        res = [
+            Params.SPARK_WORKER_NAME.value.format(num=i) + '\t'
+            + self.get_specify_resource_from_output(
+                self.spark_slave_stack_name, Params.SPARK_WORKER_ID.value.format(num=i)) + '\t'
+            + self.get_specify_resource_from_output(
+                self.spark_slave_stack_name, Params.SPARK_WORKER_PRIVATE_IP.value.format(num=i)) + '\t'
+            + self.get_specify_resource_from_output(
+                self.spark_slave_stack_name, Params.SPARK_WORKER_PUBLIC_IP.value.format(num=i))
+            for i in range(1, 4)
+        ]
+        return res
+
+    def get_scaled_spark_workers_basic_msg(self) -> List:
+        msgs = []
+        for stack in self.scaled_spark_workers_stacks:
+            if not self.is_stack_complete(stack):
+                continue
+
+            instance_id = self.get_instance_id(stack)
+            private_ip = self.get_scaled_spark_worker_private_ip(stack)
+            public_ip = self.get_scaled_spark_worker_public_ip(stack)
+            msg = stack + '\t' + instance_id + '\t' + private_ip + '\t' + public_ip
+            msgs.append(msg)
+        return msgs
+
+    def scale_up_worker(self, worker_num: int) -> Optional[Dict]:
+        """
+        add spark workers for kylin
+        """
+        stack_name = Params.SPARK_WORKER_SCALE_STACK_NAME.value.format(num=worker_num)
+        self._validate_spark_worker_scale(stack_name)
+
+        if self.is_stack_complete(stack_name):
+            return
+
+        params: Dict = self.config[Config.EC2_SPARK_SCALE_SLAVE_PARAMS.value]
+        params = self.update_basic_params(params)
+        params[Params.SPARK_WORKER_NUM.value] = str(worker_num)
+
+        resp = self.create_stack(
+            stack_name=stack_name,
+            file_path=self.path_of_spark_slave_scaled_stack,
+            params=params
+        )
+
+        return resp
+
+    def scale_down_worker(self, worker_num: int) -> Optional[Dict]:
+        stack_name = Params.SPARK_WORKER_SCALE_STACK_NAME.value.format(num=worker_num)
+        self._validate_spark_worker_scale(stack_name)
+        if self.is_stack_deleted_complete(stack_name):
+            return
+
+        instance_id = self.get_instance_id(stack_name)
+        # spark decommission feature start to be supported in spark 3.1.x.
+        # refer: https://issues.apache.org/jira/browse/SPARK-20624.
+        self.exec_script_instance_and_return(name_or_id=instance_id,
+                                             script=Commands.SPARK_DECOMMISION_WORKER_COMMAND.value)
+        # FIXME: hard code for sleep spark worker to execute remaining jobs
+        # sleep 5 min to ensure all jobs in decommissioned workers are done
+        time.sleep(60 * 3)
+
+        # before terminate and delete stack, the worker should be decommissioned.
+        resp = self.delete_stack(stack_name)
+        return resp
+    # ============ Spark Slave Services End ============
+
+    # ============ Prometheus Services Start ============
+    def start_prometheus(self) -> None:
+        self.refresh_prometheus_param_map()
+        self.start_prometheus_server()
+
+    def start_prometheus_server(self) -> None:
+        start_command = Commands.START_PROMETHEUS_COMMAND.value
+        instance_id = self.get_static_services_instance_id()
+        self.exec_script_instance_and_return(name_or_id=instance_id, script=start_command)
+
+    def stop_prometheus_server(self) -> None:
+        stop_command = Commands.STOP_PROMETHEUS_COMMAND.value
+        instance_id = self.get_static_services_instance_id()
+        self.exec_script_instance_and_return(name_or_id=instance_id, script=stop_command)
+
+    def restart_prometheus_server(self) -> None:
+        self.stop_prometheus_server()
+        self.start_prometheus_server()
+
+    def refresh_prometheus_param_map(self) -> None:
+        static_services_id = self.get_static_services_instance_id()
+
+        refresh_config_commands = self.refresh_prometheus_commands()
+        for command in refresh_config_commands:
+            self.exec_script_instance_and_return(name_or_id=static_services_id, script=command)
+
+        # Special support spark metrics into prometheus
+        spark_config_commands = self.refresh_spark_metrics_commands()
+        for command in spark_config_commands:
+            self.exec_script_instance_and_return(name_or_id=static_services_id, script=command)
+
+    def refresh_prometheus_commands(self) -> List:
+        params = self.prometheus_param_map()
+        # NOTE: the spaces in template is for prometheus config's indent
+        commands = [Commands.PROMETHEUS_CFG_COMMAND.value.format(node=node, host=host) for node, host in params.items()]
+        return commands
+
+    def after_scale_prometheus_params_map_of_kylin(self) -> Dict:
+        kylin_ips, _ = self.get_scaled_node_private_ips()
+
+        kylin_node_keys = [Params.KYLIN_SCALE_NODE_NAME.value.format(num=i)
+                           for i in generate_nodes(self.scaled_kylin_nodes)]
+        kylin_params_map = dict(zip(kylin_node_keys, kylin_ips))
+        return kylin_params_map
+
+    def after_scale_prometheus_params_map_of_spark_worker(self) -> Dict:
+        _, spark_workers_ips = self.get_scaled_node_private_ips()
+
+        spark_workers_keys = [Params.SPARK_SCALE_WORKER_NAME.value.format(num=i)
+                              for i in generate_nodes(self.scaled_spark_workers)]
+        spark_workers_params_map = dict(zip(spark_workers_keys, spark_workers_ips))
+
+        return spark_workers_params_map
+
+    def is_prometheus_configured(self, host: str) -> bool:
+        static_services_instance_id = self.get_static_services_instance_id()
+        check_command = Commands.PROMETHEUS_CFG_CHECK_COMMAND.value.format(node=host)
+        output = self.exec_script_instance_and_return(name_or_id=static_services_instance_id, script=check_command)
+        return output['StandardOutputContent'] == '0\n'
+
+    def get_prometheus_configured_hosts(self, hosts: List) -> List:
+        static_services_instance_id = self.get_static_services_instance_id()
+        configured_hosts = []
+        for host in hosts:
+            check_command = Commands.PROMETHEUS_CFG_CHECK_COMMAND.value.format(node=host)
+            output = self.exec_script_instance_and_return(name_or_id=static_services_instance_id, script=check_command)
+            if output['StandardOutputContent'] == '0\n':
+                configured_hosts.append(host)
+        return configured_hosts
+
+    def check_prometheus_config_after_scale(self, node_type: str) -> Dict:
+        if node_type == 'kylin':
+            workers_param_map = self.after_scale_prometheus_params_map_of_kylin()
+        else:
+            workers_param_map = self.after_scale_prometheus_params_map_of_spark_worker()
+
+        instance_id = self.get_instance_id(self.static_service_stack_name)
+        not_exists_nodes: Dict = {}
+        for k, v in workers_param_map.items():
+            command = Commands.PROMETHEUS_CFG_CHECK_COMMAND.value.format(node=k)
+            output = self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+            # output['StandardOutputContent'] = '1\n' means the node not exists in the prometheus config
+            if output['StandardOutputContent'] == '1\n':
+                not_exists_nodes.update({k: v})
+        return not_exists_nodes
+
+    def check_prometheus_config_after_scale_down(self, node_type: str) -> Dict:
+        if node_type == 'kylin':
+            workers_param_map = self.after_scale_prometheus_params_map_of_kylin()
+        else:
+            workers_param_map = self.after_scale_prometheus_params_map_of_spark_worker()
+
+        instance_id = self.get_instance_id(self.static_service_stack_name)
+        exists_nodes: Dict = {}
+        for k, v in workers_param_map.items():
+            command = Commands.PROMETHEUS_CFG_CHECK_COMMAND.value.format(node=k)
+            output = self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+            # output['StandardOutputContent'] = '0\n' means the node exists in the prometheus config
+            if output['StandardOutputContent'] == '0\n':
+                exists_nodes.update({k: v})
+        return exists_nodes
+
+    def refresh_prometheus_config_after_scale_up(self, expected_nodes: Dict) -> None:
+        commands = self.refresh_prometheus_commands_after_scale(expected_nodes)
+        instance_id = self.get_instance_id(self.static_service_stack_name)
+        for command in commands:
+            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+
+    def refresh_prometheus_config_after_scale_down(self, exists_nodes: Dict) -> None:
+        instance_id = self.get_instance_id(self.static_service_stack_name)
+        commands = [Commands.PROMETHEUS_DELETE_CFG_COMMAND.value.format(node=worker) for worker in exists_nodes.keys()]
+        for command in commands:
+            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+
+    # ============ Prometheus Services End ============
+
+    # ============ Utils Services Start ============
+    def update_basic_params(self, params: Dict) -> Dict:
+        params[Params.SUBNET_ID.value] = self.get_subnet_id()
+        params[Params.SECURITY_GROUP.value] = self.get_security_group_id()
+        params[Params.INSTANCE_PROFILE.value] = self.get_instance_profile()
+        # update bucket path
+        params[Params.BUCKET_FULL_PATH.value] = self.bucket_full_path
+        params[Params.BUCKET_PATH.value] = self.bucket_path
+        return params
+
+    def terminate_stack_by_name(self, stack_name: str) -> Optional[Dict]:
+        if self.is_stack_deleted_complete(stack_name):
+            return
+
+        resp = self.delete_stack(stack_name)
+        return resp
+
+    def create_stack(self, stack_name: str, file_path: str, params: Dict, is_capability: bool = False) -> Dict:
+        try:
+            if is_capability:
+                resp = self.cf_client.create_stack(
+                    StackName=stack_name,
+                    TemplateBody=read_template(file_path),
+                    Parameters=[{'ParameterKey': k, 'ParameterValue': v} for k, v in params.items()],
+                    Capabilities=['CAPABILITY_IAM']
+                )
+            else:
+                resp = self.cf_client.create_stack(
+                    StackName=stack_name,
+                    TemplateBody=read_template(file_path),
+                    Parameters=[{'ParameterKey': k, 'ParameterValue': v} for k, v in params.items()],
+                )
+            return resp
+        except ParamValidationError as ex:
+            logger.error(ex)
+        assert self.is_stack_complete(stack_name=stack_name), \
+            f"Stack {stack_name} not create complete, pls check."
 
     def delete_stack(self, stack_name: str) -> Dict:
         resp = self.cf_client.delete_stack(StackName=stack_name)
         return resp
 
-    def start_prometheus(self, stack_name: str) -> None:
-        if stack_name != self.config[Config.DISTRIBUTION_STACK.value]:
-            logger.warning(f"Only {self.config[Config.DISTRIBUTION_STACK.value]} has the prometheus server.")
-            return
-        self.refresh_prometheus_param_map(stack_name=stack_name)
-        self.start_prometheus_server(stack_name=stack_name)
-
-    def start_prometheus_server(self, stack_name: str) -> None:
-        start_command = 'nohup /home/ec2-user/prometheus/prometheus --config.file=/home/ec2-user/prometheus/prometheus.yml >> /home/ec2-user/prometheus/nohup.log 2>&1 &'
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-        self.exec_script_instance_and_return(name_or_id=instance_id, script=start_command)
-
-    def stop_prometheus_server(self, stack_name: str) -> None:
-        stop_command = 'lsof -t -i:9090 | xargs kill -9'
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-        self.exec_script_instance_and_return(name_or_id=instance_id, script=stop_command)
-
-    def restart_prometheus_server(self, stack_name: str) -> None:
-        self.stop_prometheus_server(stack_name=stack_name)
-        self.start_prometheus_server(stack_name=stack_name)
-
-    def refresh_prometheus_param_map(self, stack_name: str) -> None:
-        refresh_config_commands = self.refresh_prometheus_commands()
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-        for command in refresh_config_commands:
-            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
-
-        # Special support spark metrics into prometheus
-        spark_config_commands = self.refresh_spark_metrics_commands()
-        for command in spark_config_commands:
-            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
-
-    def refresh_prometheus_commands(self) -> List:
-        # TODO: fill all command for prometheus server config
-        params = self.prometheus_param_map()
-        # NOTE: the spaces in template is for prometheus config's indent
-        commands = [self.COMMAND_TEMPLATE.format(node=node, host=host) for node, host in params.items()]
-        return commands
-
     def refresh_spark_metrics_commands(self) -> List:
-        master_private_ip = self._get_node_ip(self.config[Config.MASTER_STACK.value], 'MasterEc2InstancePrivateIp')
+        spark_master_host = self.get_spark_master_host()
         commands = [
-            self.SPARK_DRIVER_COMMAND_TEMPLATE.format(node='spark_driver', host=master_private_ip),
-            self.SPARK_WORKER_COMMAND_TEMPLATE.format(node='spark_worker', host=master_private_ip),
-            self.SPARK_APPLICATIONS_COMMAND_TEMPLATE.format(node='spark_applications', host=master_private_ip),
-            self.SPARK_MASTER_COMMAND_TEMPLATE.format(node='spark_master', host=master_private_ip),
-            self.SPARK_EXECUTORS_COMMAND_TEMPLATE.format(node='spark_executors', host=master_private_ip),
+            Commands.SPARK_DRIVER_METRIC_COMMAND.value.format(node='spark_driver', host=spark_master_host),
+            Commands.SPARK_WORKER_METRIC_COMMAND.value.format(node='spark_worker', host=spark_master_host),
+            Commands.SPARK_APPLICATIONS_METRIC_COMMAND.value.format(node='spark_applications', host=spark_master_host),
+            Commands.SPARK_MASTER_METRIC_COMMAND.value.format(node='spark_master', host=spark_master_host),
+            Commands.SPARK_EXECUTORS_METRIC_COMMAND.value.format(node='spark_executors', host=spark_master_host),
         ]
         return commands
 
-    def refresh_prometheus_commands_after_scale(self, worker_nums: List) -> List:
-        params = self.after_scale_prometheus_params_map(worker_nums)
-        commands = [self.COMMAND_TEMPLATE.format(node=node, host=host) for node, host in params.items()]
+    def refresh_prometheus_commands_after_scale(self, expected_nodes: Dict) -> List:
+        commands = [Commands.PROMETHEUS_CFG_COMMAND.value.format(node=node, host=host)
+                    for node, host in expected_nodes.items()]
         return commands
 
     def prometheus_param_map(self) -> Dict:
-        ips = self.get_all_node_ips()
-        params = ['distribution_node', 'master_node', 'slave01_node', 'slave02_node', 'slave03_node']
-        param_map = dict(zip(params, ips))
-        # TODO: fill all prometheus server config
-        return param_map
+        params_map: Dict = {}
+        static_ip = self.get_static_services_private_ip()
+        static_map = {Params.STATIC_SERVICES_NAME.value: static_ip}
 
-    def after_scale_prometheus_params_map(self, worker_nums: List) -> Dict:
-        ips = self.get_scale_node_ips(worker_nums)
-        params = [f'slave{worker}-node' for worker in worker_nums]
-        param_map = dict(zip(params, ips))
-        return param_map
+        kylin_ip = self.get_kylin_private_ip()
+        kylin_map = {Params.KYLIN_NAME.value: kylin_ip}
 
-    def check_prometheus_config_after_scale_up(self, stack_name: str, worker_nums: List) -> List:
-        workers_param_map = self.after_scale_prometheus_params_map(worker_nums)
-        exists_workers_command = '''grep -Fq "{node}" /home/ec2-user/prometheus/prometheus.yml; echo $?'''
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-        not_exists_workers = []
-        for worker in workers_param_map.keys():
-            command = exists_workers_command.format(node=worker)
-            output = self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
-            # output['StandardOutputContent'] = '1\n' means the node not exists in the prometheus config
-            if output['StandardOutputContent'] == '1\n':
-                not_exists_workers.extend(re.findall(r'\d+', worker))
-        return not_exists_workers
+        spark_master_ip = self.get_spark_master_host()
+        spark_master_map = {Params.SPARK_MASTER_NAME.value: spark_master_ip}
 
-    def check_prometheus_config_after_scale_down(self, stack_name: str, worker_nums: List) -> List:
-        workers_param_map = self.after_scale_prometheus_params_map(worker_nums)
-        exists_workers_command = '''grep -Fq "{node}" /home/ec2-user/prometheus/prometheus.yml; echo $?'''
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-        exists_workers = []
-        for worker in workers_param_map.keys():
-            command = exists_workers_command.format(node=worker)
-            output = self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
-            # output['StandardOutputContent'] = '0\n' means the node exists in the prometheus config
-            if output['StandardOutputContent'] == '0\n':
-                exists_workers.append(worker)
-        return exists_workers
+        zk_ips = self.get_instance_ips_of_zks_stack()
+        zks_map = {
+            Params.ZOOKEEPER_NAME.value.format(num=i): zk_ips[i - 1] for i in range(1, 4)
+        }
+        spark_slaves_ips = self.get_instance_ips_of_spark_slaves_stack()
+        spark_slaves_map = {
+            Params.SPARK_WORKER_NAME.value.format(num=i): spark_slaves_ips[i - 1] for i in range(1, 4)
+        }
+        params_map.update(static_map)
+        params_map.update(kylin_map)
+        params_map.update(spark_master_map)
+        params_map.update(zks_map)
+        params_map.update(spark_slaves_map)
 
-    def refresh_prometheus_config_after_scale_up(self, stack_name: str, worker_nums: List) -> None:
-        commands = self.refresh_prometheus_commands_after_scale(worker_nums)
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-        for command in commands:
-            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+        return params_map
 
-    def refresh_prometheus_config_after_scale_down(self, stack_name: str, exists_workers: List) -> None:
-        commands_template = '''sed -i "/{node}/,+2d" /home/ec2-user/prometheus/prometheus.yml'''
-        resource_type = 'Ec2InstanceIdOfDistributionNode'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-        commands = [commands_template.format(node=worker) for worker in exists_workers]
-        for command in commands:
-            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+    def zk_param_map(self) -> Dict:
+        return dict(zip(self.get_instance_ids_of_zks_stack(), self.get_instance_ips_of_zks_stack()))
 
-    def get_all_node_ips(self) -> List:
-        res = []
-        distribution_private_ip = self._get_node_ip(
-            self.config[Config.DISTRIBUTION_STACK.value],
-            'DistributionNodePrivateIp'
-        )
-        master_private_ip = self._get_node_ip(self.config[Config.MASTER_STACK.value], 'MasterEc2InstancePrivateIp')
-        slaves_private_ips = [
-            self._get_node_ip(self.config[Config.SLAVE_STACK.value], f'Slave0{i}Ec2InstancePrivateIp')
-            for i in range(1, 4)  # default slave nodes' num is 3
-        ]
-        res.append(distribution_private_ip)
-        res.append(master_private_ip)
-        res.extend(slaves_private_ips)
-        return res
+    def static_services_param_map(self) -> Dict:
+        return dict(zip(self.get_static_services_instance_id(), self.get_static_services_private_ip()))
 
-    def _get_node_ip(self, stack_name: str, private_ip_key: str) -> str:
-        return self.get_specify_resource_from_output(stack_name, private_ip_key)
+    def spark_master_param_map(self) -> Dict:
+        return dict(zip(self.get_spark_master_instance_id(), self.get_spark_master_host()))
 
-    def get_scale_node_ips(self, worker_nums: List) -> List:
-        scale_private_ips = [
-            self.get_specify_resource_from_output(
-                self.SCALE_STACK_NAME_TEMPLATE.format(worker),
-                'SlaveEc2InstancePrivateIp'
-            ) for worker in worker_nums
-        ]
-        return scale_private_ips
+    def spark_slaves_param_map(self) -> Dict:
+        return dict(zip(self.get_instance_ids_of_spark_slave_stack(), self.get_instance_ips_of_spark_slaves_stack()))
+
+    def kylin_param_map(self) -> Dict:
+        return dict(zip(self.get_kylin_instance_id(), self.get_kylin_private_ip()))
+
+    def get_scaled_node_private_ips(self) -> [List, List]:
+        scaled_kylin_stacks = self.scaled_kylin_stacks
+        scaled_kylin_ips = []
+        for stack in scaled_kylin_stacks:
+            ip = self.get_scaled_kylin_private_ip(stack)
+            if not ip:
+                continue
+            scaled_kylin_ips.append(ip)
+
+        scaled_spark_worker_stacks = self.scaled_spark_workers_stacks
+        scaled_workers_ips = []
+        for stack in scaled_spark_worker_stacks:
+            ip = self.get_scaled_spark_worker_private_ip(stack)
+            if not ip:
+                continue
+            scaled_workers_ips.append(ip)
+        return scaled_kylin_ips, scaled_workers_ips
 
     def get_specify_resource_from_output(self, stack_name: str, resource_type: str) -> str:
         output = self.get_stack_output(stack_name)
@@ -387,68 +1015,54 @@ class AWSInstance:
         return handled_outputs
 
     def alive_workers(self) -> None:
-        workers = []
-        basic_stack_names = [
-            self.config[Config.DISTRIBUTION_STACK.value],
-            self.config[Config.MASTER_STACK.value],
-            self.config[Config.SLAVE_STACK.value],
-        ]
-        # basic instances check
-        distribution_stack_name = self.config[Config.DISTRIBUTION_STACK.value]
-        if self._stack_exists(stack_name=distribution_stack_name):
-            instance_id = self.get_specify_resource_from_output(
-                distribution_stack_name, 'Ec2InstanceIdOfDistributionNode'
-            )
-            workers.append(f'{distribution_stack_name}\t\t{instance_id}\n')
+        static_msg = self.get_static_services_basic_msg()
+        kylin_msg = self.get_kylin_basic_msg()
+        spark_master_msg = self.get_spark_master_msg()
 
-        master_stack_name = self.config[Config.MASTER_STACK.value]
-        if self._stack_exists(stack_name=master_stack_name):
-            instance_id = self.get_specify_resource_from_output(
-                master_stack_name, 'MasterEc2InstanceId'
-            )
-            workers.append(f'{master_stack_name}\t\t{instance_id}\n')
+        msgs = [m for m in [static_msg, kylin_msg, spark_master_msg] if m]
 
-        slave_stack_name = self.config[Config.SLAVE_STACK.value]
-        if self._stack_exists(stack_name=slave_stack_name):
-            for index, resource_type in enumerate(['Slave01Ec2InstanceId', 'Slave02Ec2InstanceId', 'Slave03Ec2InstanceId']):
-                instance_id = self.get_specify_resource_from_output(
-                    slave_stack_name, resource_type
-                )
-                workers.append(f'{slave_stack_name}-slave0{index+1}\t\t{instance_id}\n')
+        spark_slaves_msg = self.get_spark_slaves_basic_msg()
+        zks_msg = self.get_zks_basic_msg()
 
-        scale_nodes = scaled_stacks(self.scaled_nodes)
-        for scale_stack in scale_nodes:
-            if self._stack_exists(stack_name=scale_stack):
-                instance_id = self.get_specify_resource_from_output(
-                    scale_stack, 'SlaveEc2InstanceId'
-                )
-                workers.append(f'{scale_stack}\t\t{instance_id}\n')
+        scaled_kylins_msg = self.get_scaled_kylin_basic_msg()
+        scaled_spark_workers_msg = self.get_scaled_spark_workers_basic_msg()
 
-        result = f"Alive Nodes List:\nStack Name\t\tInstance ID\n"
-        for w in workers:
-            result += w
+        msgs.extend(zks_msg)
+        msgs.extend(spark_slaves_msg)
+        msgs.extend(scaled_kylins_msg)
+        msgs.extend(scaled_spark_workers_msg)
+        logger.info("=================== List Alive Nodes ===========================")
+        result = f"Alive Nodes List:\nStack Name\t\tInstance ID\t\tPrivate Ip\t\tPublic Ip\t\t\n"
+        for msg in msgs:
+            result += msg + '\n'
         logger.info(result)
+        logger.info("=================== List Alive Nodes ===========================")
         logger.info("Alive Nodes List Done!")
 
-    def is_ec2_stack_ready(self) -> bool:
+    def is_ec2_stacks_ready(self) -> bool:
         if not (
-                self._stack_complete(self.config[Config.VPC_STACK.value])
-                and self._stack_complete(self.config[Config.DISTRIBUTION_STACK.value])
-                and self._stack_complete(self.config[Config.MASTER_STACK.value])
-                and self._stack_complete(self.config[Config.SLAVE_STACK.value])
+                self.is_stack_complete(self.vpc_stack_name)
+                and self.is_stack_complete(self.static_service_stack_name)
+                and self.is_stack_complete(self.zk_stack_name)
+                and self.is_stack_complete(self.spark_master_stack_name)
+                and self.is_stack_complete(self.spark_slave_stack_name)
+                and self.is_stack_complete(self.kylin_stack_name)
         ):
             return False
         return True
 
-    def is_ec2_stack_terminated(self) -> bool:
+    def is_ec2_stacks_terminated(self) -> bool:
         deleted_cost_stacks: bool = (
-                self._stack_delete_complete(self.config[Config.DISTRIBUTION_STACK.value])
-                and self._stack_delete_complete(self.config[Config.MASTER_STACK.value])
-                and self._stack_delete_complete(self.config[Config.SLAVE_STACK.value]))
+                self.is_stack_deleted_complete(self.static_service_stack_name)
+                and self.is_stack_deleted_complete(self.zk_stack_name)
+                and self.is_stack_deleted_complete(self.spark_master_stack_name)
+                and self.is_stack_deleted_complete(self.spark_slave_stack_name)
+                and self.is_stack_deleted_complete(self.kylin_stack_name)
+        )
         if not deleted_cost_stacks:
             return False
         if not self.config['ALWAYS_DESTROY_ALL'] \
-                or self._stack_delete_complete(self.config[Config.VPC_STACK.value]):
+                or self.is_stack_deleted_complete(self.vpc_stack_name):
             return True
         return False
 
@@ -497,7 +1111,7 @@ class AWSInstance:
             Force=True
         )
 
-    def stop_ec2_instances(self, instance_ids: list):
+    def stop_ec2_instances(self, instance_ids: List):
         self.ec2_client.stop_instances(
             InstanceIds=instance_ids,
             Force=True
@@ -509,12 +1123,12 @@ class AWSInstance:
         )
         return resp
 
-    def start_ec2_instances(self, instance_ids: list) -> Dict:
+    def start_ec2_instances(self, instance_ids: List) -> Dict:
         resp = self.ec2_client.start_instances(
             InstanceIds=instance_ids,
         )
         return resp
-    
+
     def ec2_instance_statuses(self, instance_ids: List) -> Dict:
         resp = self.ec2_client.describe_instance_status(
             Filters=[{
@@ -540,60 +1154,23 @@ class AWSInstance:
     def is_ec2_instance_stopped(self, instance_id: str) -> bool:
         return self.ec2_instance_status(instance_id) == 'stopped'
 
-    def scale_up_worker(self, worker_num: int) -> Optional[Dict]:
-        """
-        add workers for kylin to scale spark worker
-        """
-        self._validate_stack(worker_num)
-        stack_name = self.SCALE_STACK_NAME_TEMPLATE.format(worker_num)
-        if self._stack_complete(stack_name):
-            logger.warning(f"{stack_name} already created complete.")
-            return
+    def is_rds_ready(self) -> bool:
+        describe_rds: Dict = self.get_rds_describe()
+        rds_endpoints: Dict = describe_rds['Endpoint']
+        # TODO: check rds with password and user is accessible.
 
-        # Note: the stack name must be pre-step's
-        params: dict = self._merge_params(
-            stack_name=self.config[Config.MASTER_STACK.value],
-            param_name=Config.EC2_SCALE_SLAVE_PARAMS.value,
-            config=self.config,
-        )
+        is_rds_available: bool = describe_rds['DBInstanceStatus'] == 'available'
+        is_rds_matched_port = str(rds_endpoints['Port']) == self.db_port
+        return is_rds_available and is_rds_matched_port
 
-        params.update({'WorkerNum': str(worker_num)})
+    def _validate_spark_worker_scale(self, stack_name: str) -> None:
+        if stack_name not in self.scaled_spark_workers_stacks:
+            msg = f'{stack_name} not in scaled list, please check.'
+            logger.error(msg)
+            raise Exception(msg)
 
-        resp = self.create_stack(
-            stack_name=stack_name,
-            file_path=os.path.join(self.yaml_path, File.SLAVE_SCALE_YAML.value),
-            params=params
-        )
-
-        return resp
-
-    def scale_down_worker(self, worker_num: int) -> Optional[Dict]:
-        self._validate_stack(worker_num)
-        stack_name = self.SCALE_STACK_NAME_TEMPLATE.format(worker_num)
-
-        if self._stack_delete_complete(stack_name):
-            logger.warning(f"{stack_name} already deleted.")
-            return
-
-        resource_type = 'SlaveEc2InstanceId'
-        # NOTE: name_or_id must be instance id!
-        instance_id = self.get_specify_resource_from_output(stack_name, resource_type)
-
-        # spark decommission feature start to be supported in spark 3.1.x.
-        # refer: https://issues.apache.org/jira/browse/SPARK-20624.
-        backup_command = 'source ~/.bash_profile && ${SPARK_HOME}/sbin/decommission-worker.sh'
-        self.exec_script_instance_and_return(name_or_id=instance_id, script=backup_command)
-        # FIXME: hard code for sleep spark worker to execute remaining jobs
-        # sleep 5 min to ensure all jobs in decommissioned workers are done
-        time.sleep(60 * 3)
-
-        # before terminate and delete stack, the worker should be decommissioned.
-        resp = self.delete_stack(stack_name)
-        return resp
-
-    def _validate_stack(self, worker_num: int) -> None:
-        stack_name = self.SCALE_STACK_NAME_TEMPLATE.format(worker_num)
-        if stack_name not in self.stack_map.keys():
+    def _validate_kylin_scale(self, stack_name: str) -> None:
+        if stack_name not in self.scaled_spark_workers_stacks:
             msg = f'{stack_name} not in scaled list, please check.'
             logger.error(msg)
             raise Exception(msg)
@@ -606,10 +1183,16 @@ class AWSInstance:
 
     def _stack_status_check(self, name_or_id: str, status: str) -> bool:
         try:
-            resp: dict = self.cf_client.describe_stacks(StackName=name_or_id)
+            resp: Dict = self.cf_client.describe_stacks(StackName=name_or_id)
         except ClientError:
             return False
         return resp['Stacks'][0]['StackStatus'] == status
+
+    def is_stack_complete(self, stack_name: str) -> bool:
+        if self._stack_complete(stack_name):
+            logger.warning(f"{stack_name} already complete, skip create it again.")
+            return True
+        return False
 
     def _stack_complete(self, stack_name: str) -> bool:
         try:
@@ -638,6 +1221,12 @@ class AWSInstance:
             return False
         return True
 
+    def is_stack_deleted_complete(self, stack_name: str) -> bool:
+        if self._stack_delete_complete(stack_name):
+            logger.warning(f"{stack_name} already deleted, skip delete it.")
+            return True
+        return False
+
     def _stack_delete_complete(self, stack_name: str) -> bool:
         try:
             self.delete_complete_waiter.wait(
@@ -651,21 +1240,7 @@ class AWSInstance:
             logger.error(wx)
             return False
         return True
-
-    def _merge_params(self, stack_name: str, param_name: str, config: dict) -> dict:
-        # this stack name is pre-stack
-        output: dict = self.get_stack_output(stack_name)
-        params: dict = config[param_name]
-
-        # stack output mapping relationship
-        relate_map = self.stack_map[stack_name]
-        for k, v in params.items():
-            # if params hasn't default value, use the pre-step output value to fill the param
-            # special skip for scaling nodes
-            if v or k == 'WorkerNum':
-                continue
-            params[k] = output[relate_map[k]]
-        return params
+    # ============ Utils Services End ============
 
 
 class AWS:
@@ -674,92 +1249,148 @@ class AWS:
         self.cloud_instance = AWSInstance(config)
         self.config = config
 
+    @property
     def is_cluster_ready(self) -> bool:
-        return self.cloud_instance.is_ec2_stack_ready()
+        if self.is_instances_ready:
+            return True
+        msg = f'Current cluster is not ready, please deploy cluster first.'
+        logger.warning(msg)
+        return False
 
-    def aws_ec2_cluster(self) -> Optional[Dict]:
-        if not self.cloud_instance.is_ec2_stack_ready():
+    @property
+    def is_instances_ready(self) -> bool:
+        return self.cloud_instance.is_ec2_stacks_ready()
+
+    @property
+    def is_cluster_terminated(self) -> bool:
+        if self.is_instances_terminated:
+            return True
+        msg = 'Current cluster is alive, please destroy cluster firsrt.'
+        logger.warning(msg)
+        return False
+
+    @property
+    def is_instances_terminated(self) -> bool:
+        return self.cloud_instance.is_ec2_stacks_terminated()
+
+    @property
+    def kylin_stack_name(self) -> str:
+        return self.cloud_instance.kylin_stack_name
+
+    @property
+    def is_associated_public_ip(self) -> bool:
+        return self.config[Params.ASSOSICATED_PUBLIC_IP.value] == 'true'
+
+    @property
+    def is_destroy_all(self) -> bool:
+        return self.config[Params.ALWAYS_DESTROY_ALL.value] is True
+
+    def get_resources(self, stack_name: str) -> Dict:
+        return self.cloud_instance.get_stack_output(stack_name)
+
+    def init_cluster(self) -> None:
+        if not self.is_instances_ready:
             self.cloud_instance.create_vpc_stack()
-            self.cloud_instance.create_distribution_stack()
-            self.cloud_instance.create_master_stack()
-            self.cloud_instance.create_slave_stack()
-        # now start monitor of prometheus because of every node_exporter ips are known
-        self.cloud_instance.start_prometheus(self.config[Config.DISTRIBUTION_STACK.value])
-        # return the master stack resources
-        resources = self.cloud_instance.get_stack_output(self.config[Config.MASTER_STACK.value])
-        return resources
+            self.cloud_instance.create_rds_stack()
+            self.cloud_instance.create_static_service_stack()
+            self.cloud_instance.create_zk_stack()
+            # Need to refresh its config and start them after created zks
+            self.cloud_instance.after_create_zk_cluster()
+            self.cloud_instance.create_spark_master_stack()
+            self.cloud_instance.create_spark_slave_stack()
+            self.cloud_instance.create_kylin_stack()
+        self.cloud_instance.start_prometheus()
+        logger.info('Cluster start successfully.')
 
-    def terminate_ec2_cluster(self) -> Optional[Dict]:
-        if self.cloud_instance.is_ec2_stack_terminated():
-            logger.warning('ec2 stack already deleted.')
-            return
-        self.cloud_instance.terminate_slave_stack()
-        self.cloud_instance.terminate_master_stack()
-        self.cloud_instance.terminate_distribution_stack()
-        if self.config['ALWAYS_DESTROY_ALL'] is True:
-            self.cloud_instance.terminate_vpc_stack()
-        # don't need to terminate vpc stack, because it's free resource on your aws if don't use it.
-        # after terminated all node check again.
-        assert self.cloud_instance.is_ec2_stack_terminated() is True
+    def get_kylin_address(self):
+        kylin_resources = self.get_kylin_resources()
+        kylin4_address = kylin_resources.get(Params.KYLIN4_PRIVATE_IP.value)
+        if self.is_associated_public_ip:
+            kylin4_address = kylin_resources.get(Params.KYLIN4_PUBLIC_IP.value)
+        return kylin4_address
 
-    def is_aws_cloud_ready(self) -> bool:
-        if not self.is_cluster_ready():
-            msg = f'Current Cluster is not ready, please deploy cluster first.'
-            logger.warning(msg)
-            raise Exception(msg)
-        return True
-
-    def aws_cloud(self) -> str:
-        resource = self.aws_ec2_cluster()
-        # only get the master dns
-        # FIXME: fix hard code and get method
-        if self.config[Config.EC2_MASTER_PARAMS.value]['AssociatedPublicIp'] == 'true':
-            return resource.get('MasterEc2InstancePublicIp')
-        return resource.get('MasterEc2InstancePrivateIp')
+    def get_kylin_resources(self):
+        if not self.is_cluster_ready:
+            self.init_cluster()
+        kylin_resources = self.get_resources(self.kylin_stack_name)
+        return kylin_resources
 
     def destroy_aws_cloud(self):
         self.terminate_ec2_cluster()
 
+    def terminate_ec2_cluster(self) -> Optional[Dict]:
+        if self.is_cluster_terminated:
+            return
+        self.cloud_instance.terminate_spark_slave_stack()
+        self.cloud_instance.terminate_spark_master_stack()
+        self.cloud_instance.terminate_kylin_stack()
+        self.cloud_instance.terminate_zk_stack()
+        self.cloud_instance.terminate_static_service_stack()
+        # RDS will be removed by user manually.
+        # self.cloud_instance.terminate_rds_stack()
+
+        if self.is_destroy_all:
+            self.cloud_instance.terminate_vpc_stack()
+        # Don't need to terminate vpc stack, because it's free resource on your aws if don't use it.
+        # Check again after terminated all node.
+        assert self.is_cluster_terminated, f'Cluster was not terminated clearly, please check.'
+
     def alive_workers(self):
         self.cloud_instance.alive_workers()
 
-    @staticmethod
-    def scale_up_down(config: Dict, worker_nums: List, scale_type: str) -> None:
-        AWS.validate_scale(scale_type)
-        cloud_instance = AWSInstance(config)
+    def scale_up_down(self, scale_type: str, node_type: str) -> None:
+        # validate scale_type & node_type
+        self.validate_scale_type(scale_type)
+        self.validate_node_type(node_type)
+
+        worker_nums = self.generate_scaled_list(node_type)
+
         exec_pool = ThreadPoolExecutor(max_workers=10)
         with exec_pool as pool:
             if scale_type == 'up':
-                pool.map(cloud_instance.scale_up_worker, worker_nums)
-            elif scale_type == 'down':
-                pool.map(cloud_instance.scale_down_worker, worker_nums)
+                if node_type == 'kylin':
+                    pool.map(self.cloud_instance.scale_up_kylin, worker_nums)
+                else:
+                    pool.map(self.cloud_instance.scale_up_worker, worker_nums)
+            else:
+                if node_type == 'kylin':
+                    pool.map(self.cloud_instance.scale_down_kylin, worker_nums)
+                else:
+                    pool.map(self.cloud_instance.scale_down_worker, worker_nums)
 
-    def after_scale(self, workers_nums: List, scale_type: str) -> None:
+    def after_scale(self, scale_type: str, node_type: str) -> None:
         if scale_type == 'up':
-            logging.info(f"Checking exists prometheus config after scale up.")
-            expected_workers = self.cloud_instance.check_prometheus_config_after_scale_up(
-                self.config[Config.DISTRIBUTION_STACK.value], workers_nums
-            )
+            logger.info(f"Checking exists prometheus config after scale up.")
+            not_exists_nodes = self.cloud_instance.check_prometheus_config_after_scale(node_type)
             logger.info("Refresh prometheus config after scale up.")
-            if expected_workers:
-                self.cloud_instance.refresh_prometheus_config_after_scale_up(
-                    self.config[Config.DISTRIBUTION_STACK.value], expected_workers
-                )
+            if not_exists_nodes:
+                self.cloud_instance.refresh_prometheus_config_after_scale_up(not_exists_nodes)
         else:
-            logging.info(f"Checking exists prometheus config after scale down.")
-            exists_workers = self.cloud_instance.check_prometheus_config_after_scale_down(
-                self.config[Config.DISTRIBUTION_STACK.value], workers_nums
-            )
+            logger.info(f"Checking exists prometheus config after scale down.")
+            exists_nodes = self.cloud_instance.check_prometheus_config_after_scale_down(node_type)
             logger.info("Refresh prometheus config after scale down.")
-            if exists_workers:
-                self.cloud_instance.refresh_prometheus_config_after_scale_down(
-                    self.config[Config.DISTRIBUTION_STACK.value], exists_workers
-                )
-        self.cloud_instance.restart_prometheus_server(self.config[Config.DISTRIBUTION_STACK.value])
+            if exists_nodes:
+                self.cloud_instance.refresh_prometheus_config_after_scale_down(exists_nodes)
+        self.cloud_instance.restart_prometheus_server()
 
     @staticmethod
-    def validate_scale(scale_type: str) -> None:
+    def validate_scale_type(scale_type: str) -> None:
         if scale_type is None or scale_type not in ['up', 'down']:
             msg = f'Not supported scale type: {scale_type}'
             logger.error(msg)
             raise Exception(msg)
+
+    @staticmethod
+    def validate_node_type(node_type: str) -> None:
+        if node_type is None or node_type not in ['kylin', 'spark_worker']:
+            msg = f'Not supported node type: {node_type}'
+            logger.error(msg)
+            raise Exception(msg)
+
+    def generate_scaled_list(self, node_type: str) -> List:
+        if node_type == 'kylin':
+            kylin_nodes = literal_eval(self.config[Config.KYLIN_SCALE_NODES.value])
+            return generate_nodes(kylin_nodes)
+        else:
+            worker_nodes = literal_eval(self.config[Config.SPARK_WORKER_SCALE_NODES.value])
+            return generate_nodes(worker_nodes)
