@@ -617,6 +617,10 @@ kylin.canary.sparder-context-canary-enabled=false
 ## Query Cache
 kylin.query.cache-enabled=true
 
+### Prepare for cluster mode
+kylin.job.scheduler.default=100
+kylin.server.self-discovery-enabled=true
+
 EOF
   elif [[ ${KYLIN_MODE} == "query" ]]; then
     cat <<EOF >${KYLIN_HOME}/conf/kylin.properties
@@ -672,6 +676,10 @@ kylin.query.spark-conf.spark.hadoop.parquet.filter.columnindex.enabled=true
 ### support prometheus
 kylin.engine.spark-conf.spark.ui.prometheus.enabled=true
 kylin.engine.spark-conf.spark.executor.processTreeMetrics.enabled=true
+
+### Prepare for cluster mode
+kylin.job.scheduler.default=100
+kylin.server.self-discovery-enabled=true
 EOF
 
   fi

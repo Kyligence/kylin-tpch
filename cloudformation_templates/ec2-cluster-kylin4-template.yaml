@@ -18,7 +18,7 @@ Parameters:
     Default: 3306
   ZookeepersHost:
     Type: String
-    Description: Must be created at pre-step, default is same as Ec2DbHost
+    Description: Must be created at pre-step
   Ec2KylinMode:
     Type: String
     Description: Kylin mode for cluster, default is all, values in [all, query, job]
@@ -48,7 +48,7 @@ Parameters:
   Ec2WaitingTime:
     Type: Number
     Default: 50
-    Description: sleep time to waitring services started in master node
+    Description: sleep time to waitring services started in kylin node
 
   Ec2Mode:
     Type: String
@@ -56,7 +56,7 @@ Parameters:
     AllowedValues:
       - test
       - product
-    Description: set the flag for Mode, if not test use product's configuration
+    Description: set the flag for Mode
 
 #   Optional Parameters
   LocalCacheSoftAffinity:
@@ -172,7 +172,7 @@ Resources:
       IamInstanceProfile: !Ref InstanceProfileId
       NetworkInterfaces:
         - DeviceIndex: 0
-          Description: Auto create for Kylin4 node in benchmark
+          Description: Auto create for Kylin4 node
           DeleteOnTermination: true
           AssociatePublicIpAddress: !Ref AssociatedPublicIp
           SubnetId: !Ref SubnetId
@@ -230,7 +230,6 @@ Outputs:
     Description: SubnetId in the vpc for Slave Node
     Value: !Ref SubnetId
   Kylin4SecurityGroupIdDependsOnDNode:
-    Description: Security group id for Slave Node
     Value: !Ref SecurityGroupId
   Kylin4SparkMasterHost:
     Description: Spark Master host for Kylin 4

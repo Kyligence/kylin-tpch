@@ -48,7 +48,7 @@ Parameters:
     AllowedValues:
       - test
       - product
-    Description: set the flag for Mode, if not test use product's configuration
+    Description: set the flag for Mode, if not `test` then use `product`
 
 #   Optional Parameters
   EnableIAMAuthentication:
@@ -95,7 +95,7 @@ Conditions:
 Resources:
   Ec2RDSInstance:
     Type: AWS::RDS::DBInstance
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Condition: NotNullSecurityGroupID
     Properties:
       Tags:

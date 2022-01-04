@@ -36,7 +36,7 @@ class EngineUtils:
     def scale_nodes(self, scale_type: str, node_type: str) -> None:
         logger.info(f'Current scaling {scale_type} {node_type} nodes.')
         assert self.is_cluster_ready() is True, 'Cluster nodes must be ready.'
-        self.aws_instance.scale_up_down(self.config, scale_type, node_type)
+        self.aws_instance.scale_up_down(scale_type, node_type)
         self.aws_instance.after_scale(scale_type, node_type)
 
     def is_cluster_ready(self) -> bool:

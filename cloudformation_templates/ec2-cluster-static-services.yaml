@@ -183,7 +183,7 @@ Outputs:
 
   # Instance parameters
   IdOfInstance:
-    Description: the id of StaticServices Node Innstance
+    Description: the id of StaticServices Node Instance
     Value: !Ref Ec2InstanceOfStaticServicesNode
   StaticServicesNodePrivateIp:
     Description: StaticServices Private IP

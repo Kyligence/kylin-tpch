@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class AWSInstance:
-    SCALE_STACK_NAME_TEMPLATE = 'ec2-slave-{}'
 
     def __init__(self, config):
         # DEPLOY_PLATFORM
@@ -30,6 +29,10 @@ class AWSInstance:
         self.subnet_group = None
         self.subnet_id = None
         self.db_host = None
+
+    @property
+    def is_associated_public_ip(self) -> bool:
+        return self.config[Params.ASSOSICATED_PUBLIC_IP.value] == 'true'
 
     @property
     def scaled_spark_workers(self) -> Optional[Tuple]:
@@ -242,6 +245,9 @@ class AWSInstance:
 
     def terminate_vpc_stack(self) -> Optional[Dict]:
         resp = self.terminate_stack_by_name(self.vpc_stack_name)
+        # Make sure that vpc stack deleted successfully.
+        assert self.is_stack_deleted_complete(self.vpc_stack_name),\
+            f'{self.vpc_stack_name} deleted failed, please check.'
         return resp
 
     # ============ VPC Services End ============
@@ -280,6 +286,8 @@ class AWSInstance:
             file_path=self.path_of_rds_stack,
             params=params,
         )
+        # Make sure that rds create successfully.
+        assert self.is_stack_complete(self.rds_stack_name), f'Rds {self.db_identifier} create failed, please check.'
         return resp
 
     def terminate_rds_stack(self) -> Optional[Dict]:
@@ -328,6 +336,9 @@ class AWSInstance:
     def get_static_services_public_ip(self) -> Optional[str]:
         if not self.is_stack_complete(self.static_service_stack_name):
             return
+        if not self.is_associated_public_ip:
+            logger.warning('Current static services was associated to a public ip.')
+            return
         return self.get_specify_resource_from_output(
             self.static_service_stack_name, Params.STATIC_SERVICES_PUBLIC_IP.value)
 
@@ -369,6 +380,7 @@ class AWSInstance:
             file_path=self.path_of_zk_stack,
             params=params
         )
+        assert self.is_stack_complete(self.zk_stack_name), f'{self.zk_stack_name} create failed, please check.'
         return resp
 
     def terminate_zk_stack(self) -> Optional[Dict]:
@@ -383,6 +395,9 @@ class AWSInstance:
             assert self.is_ec2_instance_running(zk_id), f'Instance {zk_id} is not running, please start it first.'
 
         # refresh zk cluster cfg, because the zk cfg was not included
+        # FIXME: it's hard code to make sure that zks were already initialized.
+        time.sleep(10)
+
         self.refresh_zks_cfg(zk_ips=zk_ips, zk_ids=zk_ids)
         self.start_zks(zk_ids=zk_ids, zk_ips=zk_ips)
 
@@ -497,6 +512,9 @@ class AWSInstance:
     def get_kylin_public_ip(self) -> Optional[str]:
         if not self.is_stack_complete(self.kylin_stack_name):
             return
+        if not self.is_associated_public_ip:
+            logger.warning('Current kylin was associated to a public ip.')
+            return
         return self.get_specify_resource_from_output(self.kylin_stack_name, Params.KYLIN4_PUBLIC_IP.value)
 
     def get_kylin_instance_id(self) -> Optional[str]:
@@ -521,6 +539,9 @@ class AWSInstance:
     def get_scaled_kylin_public_ip(self, stack_name: str) -> Optional[str]:
         if not self.is_stack_complete(stack_name):
             return ""
+        if not self.is_associated_public_ip:
+            logger.warning('Current scaled kylin node was associated to a public ip.')
+            return
         return self.get_specify_resource_from_output(stack_name, Params.KYLIN4_PUBLIC_IP.value)
 
     def get_scaled_kylin_basic_msg(self) -> List:
@@ -548,20 +569,21 @@ class AWSInstance:
 
         params: Dict = self.config[Config.EC2_KYLIN4_SCALE_PARAMS.value]
         # update extra params
+        params = self.update_basic_params(params)
         params[Params.SPARK_MASTER_HOST.value] = self.get_spark_master_host()
         params[Params.ZOOKEEPER_HOSTS.value] = self.get_zookeepers_host()
         params[Params.DB_HOST.value] = self.get_db_host()
 
         resp = self.create_stack(
             stack_name=stack_name,
-            file_path=self.path_of_kylin_stack,
+            file_path=self.path_of_kylin_scale_stack,
             params=params
         )
 
         return resp
 
     def scale_down_kylin(self, kylin_num: int) -> Optional[Dict]:
-        stack_name = Params.SPARK_WORKER_SCALE_STACK_NAME.value.format(num=kylin_num)
+        stack_name = Params.KYLIN_SCALE_STACK_NAME.value.format(num=kylin_num)
         self._validate_kylin_scale(stack_name)
         # before terminate and delete stack, the worker should be decommissioned.
         resp = self.terminate_stack_by_name(stack_name)
@@ -678,6 +700,9 @@ class AWSInstance:
     def get_scaled_spark_worker_public_ip(self, stack_name: str) -> Optional[str]:
         if not self.is_stack_complete(stack_name):
             return
+        if not self.is_associated_public_ip:
+            logger.warning('Current spark worker was associated to a public ip.')
+            return
         return self.get_specify_resource_from_output(stack_name, Params.SPARK_SCALED_WORKER_PUBLIC_IP.value)
 
     def get_spark_slaves_basic_msg(self) -> List:
@@ -690,8 +715,9 @@ class AWSInstance:
                 self.spark_slave_stack_name, Params.SPARK_WORKER_ID.value.format(num=i)) + '\t'
             + self.get_specify_resource_from_output(
                 self.spark_slave_stack_name, Params.SPARK_WORKER_PRIVATE_IP.value.format(num=i)) + '\t'
-            + self.get_specify_resource_from_output(
+            + (self.get_specify_resource_from_output(
                 self.spark_slave_stack_name, Params.SPARK_WORKER_PUBLIC_IP.value.format(num=i))
+               if self.is_associated_public_ip else '')
             for i in range(1, 4)
         ]
         return res
@@ -721,6 +747,7 @@ class AWSInstance:
 
         params: Dict = self.config[Config.EC2_SPARK_SCALE_SLAVE_PARAMS.value]
         params = self.update_basic_params(params)
+        params[Params.SPARK_MASTER_HOST.value] = self.get_spark_master_host()
         params[Params.SPARK_WORKER_NUM.value] = str(worker_num)
 
         resp = self.create_stack(
@@ -740,11 +767,14 @@ class AWSInstance:
         instance_id = self.get_instance_id(stack_name)
         # spark decommission feature start to be supported in spark 3.1.x.
         # refer: https://issues.apache.org/jira/browse/SPARK-20624.
-        self.exec_script_instance_and_return(name_or_id=instance_id,
-                                             script=Commands.SPARK_DECOMMISION_WORKER_COMMAND.value)
-        # FIXME: hard code for sleep spark worker to execute remaining jobs
-        # sleep 5 min to ensure all jobs in decommissioned workers are done
-        time.sleep(60 * 3)
+        try:
+            self.exec_script_instance_and_return(
+                name_or_id=instance_id, script=Commands.SPARK_DECOMMISION_WORKER_COMMAND.value)
+            # FIXME: hard code for sleep spark worker to execute remaining jobs
+            # sleep 5 min to ensure all jobs in decommissioned workers are done
+            time.sleep(60 * 3)
+        except AssertionError as ex:
+            logger.error(ex)
 
         # before terminate and delete stack, the worker should be decommissioned.
         resp = self.delete_stack(stack_name)
@@ -903,9 +933,10 @@ class AWSInstance:
         except ParamValidationError as ex:
             logger.error(ex)
         assert self.is_stack_complete(stack_name=stack_name), \
-            f"Stack {stack_name} not create complete, pls check."
+            f"Stack {stack_name} not create complete, please check."
 
     def delete_stack(self, stack_name: str) -> Dict:
+        logger.info(f'Current terminating stack: {stack_name}.')
         resp = self.cf_client.delete_stack(StackName=stack_name)
         return resp
 
@@ -920,7 +951,8 @@ class AWSInstance:
         ]
         return commands
 
-    def refresh_prometheus_commands_after_scale(self, expected_nodes: Dict) -> List:
+    @staticmethod
+    def refresh_prometheus_commands_after_scale(expected_nodes: Dict) -> List:
         commands = [Commands.PROMETHEUS_CFG_COMMAND.value.format(node=node, host=host)
                     for node, host in expected_nodes.items()]
         return commands
@@ -1031,13 +1063,12 @@ class AWSInstance:
         msgs.extend(spark_slaves_msg)
         msgs.extend(scaled_kylins_msg)
         msgs.extend(scaled_spark_workers_msg)
-        logger.info("=================== List Alive Nodes ===========================")
-        result = f"Alive Nodes List:\nStack Name\t\tInstance ID\t\tPrivate Ip\t\tPublic Ip\t\t\n"
+        header_msg = '\n=================== List Alive Nodes ===========================\n'
+        result = header_msg + f"Stack Name\t\tInstance ID\t\tPrivate Ip\t\tPublic Ip\t\t\n"
         for msg in msgs:
             result += msg + '\n'
+        result += header_msg
         logger.info(result)
-        logger.info("=================== List Alive Nodes ===========================")
-        logger.info("Alive Nodes List Done!")
 
     def is_ec2_stacks_ready(self) -> bool:
         if not (
@@ -1156,6 +1187,8 @@ class AWSInstance:
 
     def is_rds_ready(self) -> bool:
         describe_rds: Dict = self.get_rds_describe()
+        if not describe_rds:
+            return False
         rds_endpoints: Dict = describe_rds['Endpoint']
         # TODO: check rds with password and user is accessible.
 
@@ -1170,7 +1203,7 @@ class AWSInstance:
             raise Exception(msg)
 
     def _validate_kylin_scale(self, stack_name: str) -> None:
-        if stack_name not in self.scaled_spark_workers_stacks:
+        if stack_name not in self.scaled_kylin_stacks:
             msg = f'{stack_name} not in scaled list, please check.'
             logger.error(msg)
             raise Exception(msg)
@@ -1204,7 +1237,7 @@ class AWSInstance:
                 }
             )
         except WaiterError as wx:
-            logger.error(wx)
+            # logger.error(wx)
             return False
         return True
 
@@ -1233,11 +1266,11 @@ class AWSInstance:
                 StackName=stack_name,
                 WaiterConfig={
                     'Delay': 60,
-                    'MaxAttempts': 2
+                    'MaxAttempts': 120
                 }
             )
         except WaiterError as wx:
-            logger.error(wx)
+            # logger.error(wx)
             return False
         return True
     # ============ Utils Services End ============
@@ -1265,7 +1298,7 @@ class AWS:
     def is_cluster_terminated(self) -> bool:
         if self.is_instances_terminated:
             return True
-        msg = 'Current cluster is alive, please destroy cluster firsrt.'
+        msg = 'Current cluster is alive, please destroy cluster first.'
         logger.warning(msg)
         return False
 
@@ -1326,10 +1359,10 @@ class AWS:
         self.cloud_instance.terminate_kylin_stack()
         self.cloud_instance.terminate_zk_stack()
         self.cloud_instance.terminate_static_service_stack()
-        # RDS will be removed by user manually.
-        # self.cloud_instance.terminate_rds_stack()
 
         if self.is_destroy_all:
+            # RDS will be removed by user manually.
+            self.cloud_instance.terminate_rds_stack()
             self.cloud_instance.terminate_vpc_stack()
         # Don't need to terminate vpc stack, because it's free resource on your aws if don't use it.
         # Check again after terminated all node.

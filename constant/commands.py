@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class Commands(Enum):
-    STOP_PROMETHEUS_COMMAND = 'lsof -t -i:9090 | xargs kill -9'
+    STOP_PROMETHEUS_COMMAND = 'lsof -t -i:9090 | xargs -r kill -9'
     ZKS_CFG_COMMAND = '''echo 'server.1={host1}:2888:3888\nserver.2={host2}:2888:3888\nserver.3={host3}:2888:3888' >> /home/ec2-user/hadoop/zookeeper/conf/zoo.cfg'''
     # because zk need jdk env which created by root and env config in /root/.bash_profile
     ZKS_START_COMMAND = 'sudo su && source ~/.bash_profile && ${ZOOKEEPER_HOME}/bin/zkServer.sh start'

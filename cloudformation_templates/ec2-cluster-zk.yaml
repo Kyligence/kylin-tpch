@@ -269,7 +269,7 @@ Resources:
 Outputs:
   # Instance 01 parameters
   IdOfInstanceZookeeper01:
-    Description: the id of Zookeeper Node Innstance
+    Description: the id of Zookeeper Node Instance
     Value: !Ref Ec2InstanceOfZookeeperNode01
   ZookeeperNode01PrivateIp:
     Description: Zookeeper Private IP
@@ -281,7 +281,7 @@ Outputs:
 
   # Instance 02 parameters
   IdOfInstanceZookeeper02:
-    Description: the id of Zookeeper Node Innstance
+    Description: the id of Zookeeper Node Instance
     Value: !Ref Ec2InstanceOfZookeeperNode02
   ZookeeperNode02PrivateIp:
     Description: Zookeeper Private IP
@@ -294,7 +294,7 @@ Outputs:
 
   # Instance 03 parameters
   IdOfInstanceZookeeper03:
-    Description: the id of Zookeeper Node Innstance
+    Description: the id of Zookeeper Node Instance
     Value: !Ref Ec2InstanceOfZookeeperNode03
   ZookeeperNode03PrivateIp:
     Description: Zookeeper Private IP

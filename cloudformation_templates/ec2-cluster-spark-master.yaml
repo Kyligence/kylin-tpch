@@ -182,7 +182,7 @@ Resources:
 
 Outputs:
   IdOfInstance:
-    Description: the id of SparkMaster Node Innstance
+    Description: the id of SparkMaster Node Instance
     Value: !Ref Ec2InstanceOfSparkMaster
   SparkMasterNodeHost:
     Description: SparkMaster host is same as private IP
@@ -195,11 +195,8 @@ Outputs:
     Value: !GetAtt Ec2InstanceOfSparkMaster.PublicIp
     Condition: IsAssociatedPublicIp
   SparkMasterEc2InstanceProfileId:
-    Description: Instance Profile Id from Distrbution Yaml
     Value: !Ref InstanceProfileId
   SparkMasterSubnetIdDependsOnDNode:
-    Description: SubnetId in the vpc for Slave Node
     Value: !Ref SubnetId
   SparkMasterSecurityGroupIdDependsOnDNode:
-    Description: Security group id for Slave Node
     Value: !Ref SecurityGroupId
