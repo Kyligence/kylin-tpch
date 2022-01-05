@@ -1,170 +1,293 @@
-# How to deploy Kylin4 on EC2
+# How to deploy a Kylin4 Cluster on EC2
 
-Target: 
+## Target
 
 1. Deploy Kylin4 on Ec2 with Spark Standalone mode.
-
 2. Removed the dependency of hadoop and start quickly.
-
 3. Support to scale worker nodes for Spark standalone Cluster quickly and conveniently.
-
 4. Enhance performance for query in using  `Local Cache + Soft Affinity` feature (Experimental Feature), please check the [details](https://mp.weixin.qq.com/s/jEPvWJwSClQcMLPm64s4fQ).
-
 5. Support to monitor cluster status with prometheus server.
-
 6. Create a Kylin4 cluster on aws in 10 minutes.
 
-## Prerequisite
 
-##### I. Clone or Download this repo
 
-##### II. Download Packages & Upload them to S3 Path which suffix is */tar, example: `s3://xxx/kylin/tar`
+## Prerequisites 
 
-> Note: Download packages for decreasing time of installation.
+### Initiliaze AWS Account 
 
-1. Download Kylin4 package by [official website](https://kylin.apache.org/download/)
-
-2. Download Hadoop, [version 3.2.0](https://archive.apache.org/dist/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz)
-
-3. Download Spark with hadoop3.2, [version 3.1.1](https://archive.apache.org/dist/spark/spark-3.1.1/spark-3.1.1-bin-hadoop3.2.tgz)
-
-4. Download Hive, [version 2.3.9](https://archive.apache.org/dist/hive/hive-2.3.9/apache-hive-2.3.9-bin.tar.gz)
-
-5. Download Zookeeper, [version 3.4.9](https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz)
-
-6. Download JDK, [version 1.8_301](https://www.oracle.com/java/technologies/javase/javase8u211-later-archive-downloads.html)
-
-7. Download Node Exporter, [version 1.3.1](https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz)
-
-8. Download Prometheus Server, [version 2.31.1](https://github.com/prometheus/prometheus/releases/download/v2.31.1/prometheus-2.31.1.linux-amd64.tar.gz)
-
-9. Download Kylin4 package with local cache + soft affinity feature by [public website](https://s3.cn-northwest-1.amazonaws.com.cn/asia.public.kyligence.io/kylin/apache-kylin-4.0.0-bin-spark3-soft.tar.gz)
+#### I. Create an `IAM` role
 
 > Note: 
->   If you download not match jdk version, please check the scripts/*.sh which variables about jdk!
 >
->   If you want to use Kylin4 with local cache + soft affinity feature, please download the `experimental` package above.
+> ​	`IAM` role must have the access  which contains `AmazonEC2RoleforSSM` , `AmazonSSMFullAccess` and `AmazonSSMManagedInstanceCore`.
+>
+> ​	This `IAM` Role will be used to initialize every ec2 instances which are for creating an kylin4 cluster on aws. And it will configure in `Initilize Env of Local Mac` part.
 
-![tars](images/tars.jpg)
+#### II. Create a `User` 
 
-##### III. Check dependent jars of Kylin4 in `./backup/jars` & Upload them to S3 Path which suffix is */jars, example: `s3://xxx/kylin/jars`
+> Note:
+>
+> ​	The `User` who is created in aws will be used to execute some operations on EC2 instance. So the `User` must has some authorities as below.
+
+| Services            | Access level                                           | Resources     | Request condition |
+| ------------------- | ------------------------------------------------------ | ------------- | ----------------- |
+| **Cloudformation**  | **Limited**: List, Read,Write                          | All Resources | None              |
+| **EC2**             | **Limited**: Read                                      | All Resources | None              |
+| **IAM**             | **Limited**: List, Read, Write, Permissions management | All Resources | None              |
+| **RDS**             | **Limited**: List, Write, Tagging                      | All Resources | None              |
+| **S3**              | **Limited**: Write, Permissions management, Tagging    | All Resources | None              |
+| **SNS**             | **Limited**: List                                      | All Resources | None              |
+| **STS**             | **Limited**: Write                                     | All Resources | None              |
+| **Systems Manager** | **Limited**: Write                                     | All Resources | None              |
+
+#### III. Login the created `User` to create key pair and Access Key
+
+> Note:
+>
+> ​	To deploy EC2 instances for Kylin4 Cluster need key pair and access key.
+
+##### 1. Create a new `Key Pair` in the `EC2 -> Key pairs`
+
+![key pair](./images/keypair.png)
+
+##### 2. Genrate a new `Access Key` which in the `My Security Credentials`
+
+> Note: 
+>
+> ​	Please download the generated the csv file of `Access Key`  immediately. Get the `Access Key `  and `Secret Key` to initilize local mac to access aws.
+
+![Access Key](./images/accesskey.png)
+
+
+
+![Access Key 2](./images/accesskey2.png)
+
+
+
+### Initilize a S3 direcotry
+
+#### I. Create a directory on S3
+
+> Note: 
+>
+> ​	This directory will store tars, scripts and jars below. And it will also be the root path of working dir for kylin4.
+
+Example: make a directory named `kylin4-aws-test` . You can also create a directory named what you like.
+
+![directory](./images/directory.png)
+
+
+
+#### II. Download packages & Upload them to the S3 path which suffix is `*/tar`
+
+> Create the directory named `tar` **in the path which was created by yourself**.  
+>
+> As example, the full path would be `s3://.../kylin4-aws-test/tar`.
+
+1. Download Kylin4 package by [official website](https://kylin.apache.org/download/).
+2. Download Hadoop, [version 3.2.0](https://archive.apache.org/dist/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz).
+3. Download Spark with hadoop3.2, [version 3.1.1](https://archive.apache.org/dist/spark/spark-3.1.1/spark-3.1.1-bin-hadoop3.2.tgz).
+4. Download Hive, [version 2.3.9](https://archive.apache.org/dist/hive/hive-2.3.9/apache-hive-2.3.9-bin.tar.gz).
+5. Download Zookeeper, [version 3.4.9.](https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz)
+6. Download JDK, [version 1.8_301](https://www.oracle.com/java/technologies/javase/javase8u211-later-archive-downloads.html).
+7. Download Node Exporter, [version 1.3.1.](https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz)
+8. Download Prometheus Server, [version 2.31.1](https://github.com/prometheus/prometheus/releases/download/v2.31.1/prometheus-2.31.1.linux-amd64.tar.gz).
+9. Download Kylin4 package with local cache + soft affinity feature by [public website.](https://s3.cn-northwest-1.amazonaws.com.cn/asia.public.kyligence.io/kylin/apache-kylin-4.0.0-bin-spark3-soft.tar.gz)
+
+
+
+> Note: 
+>   	If you want to use Kylin4 with local cache + soft affinity feature, please download the `experimental` package above.
+
+![tars](./images/tars.png)
+
+
+
+#### III. Upload  `kylin-tpch/backup/jars/*` to the S3 Path which suffix is `*/jars`
+
+> Create the directory named `jars` **in the path which was created by yourself**.  
+>
+> As example, the full path would be `s3://.../kylin4-aws-test/jars`.
 
 Kylin4 needed extra jars
 
 - Basic jars
     - commons-configuration-1.3.jar
     - mysql-connector-java-5.1.40.jar
-- Local Cache + Soft Affinity needed jars
+- Local Cache + Soft Affinity feature needed jars
     - alluxio-2.6.1-client.jar
     - kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar
 
-![jars](images/jars.png)
+![jars](./images/jars.png)
 
-##### IV. Check needed deploy scripts in `./backup/scripts` & Upload them to S3 Path which suffix is */scripts, example: `s3://xxx/kylin/scripts`
+#### IV. Upload `kylin-tpch/backup/scripts/*` to the S3 Path which suffix is `*/scripts`
 
-- prepare-ec2-env-for-distribution.sh
-- prepare-ec2-env-for-master.sh
-- prepare-ec2-env-for-slave.sh
-
-![scripts](images/scripts.png)
-
-##### V. Initialize `./kylin_configs.yaml`
-
-Configure parameters in `./kylin_configs.yaml`.
-
-Required parameters:
-
-- `IAMRole`: IAM role which has the access to S3 authority and will be created in `AWS Console -> IAM -> Roles`.
-
-- `S3_FULL_BUCKET_PATH`: the prefix path of storing `jars/scripts/tar`, example `s3://xxx/kylin/tar` is for `tar` to store, then this path will be `s3://xxx/kylin`.
-
-- `S3_BUCKET_PATH`: `S3_FULL_BUCKET_PATH` without prefix `s3:/`, example: `S3_FULL_BUCKET_PATH` is `s3://xxx/kylin`, so `S3_BUCKET_PATH` is `/xxx/kylin`.
-
-- `KeyName`: security key name which will be created in `AWS Console-> EC2 -> Network & Security -> Key Pairs` is a set of security credentials that you use to prove your identity when connecting to an instance.
-
-> Note: 
->   This step is important.  
+> Create the directory named `scripts` **in the path which was created by yourself**.  
 >
->   If you want to change instance type/volume type/volume size for nodes, please change `Ec2Mode` from `test` to `product` in [`EC2_DISTRIBUTION_PARAMS`, `EC2_MASTER_PARAMS`, `EC2_SLAVE_PARAMS`, `EC2_SCALE_SLAVE_PARAMS`].
+> As example, the full path would be `s3://.../kylin4-aws-test/scripts`.
+
+Scripts:
+
+- prepare-ec2-env-for-kylin4.sh
+- prepare-ec2-env-for-spark-master.sh
+- prepare-ec2-env-for-spark-slave.sh
+- prepare-ec2-env-for-static-services.sh
+- prepare-ec2-env-for-zk.sh
+
+![scripts](./images/scripts.png)
+
+### Initilize Env Of Local Mac
+
+#### I.  Initilize a aws account on local mac to access AWS
+
+> Use `Access Key` and `Secret Key ` above to Initilize a aws account on local mac. 
+
+```shell
+$ aws configure
+AWS Access Key ID : *************
+AWS Secret Access Key : *************
+Default region name : cn-northwest-1
+Default output format : json
+```
+
+> Note:
 >
->   If you don't change `EC2Mode` from `test` to `product` then cluster will be created in default configuration!
->
->   If you don't change `USING_LOCALCACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature!
+> 1. If this command got the response `-bash: aws: command not found`, please check in  [Getting started with the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html).
+> 2. Region name can be in [Available Regions](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html#concepts-available-regions).
+> 3. Default output format is `json`.
 
-Optional parameters:
+#### II. Clone repo & checkout to branch of `deploy-kylin-on-aws`
 
-- `Ec2InstanceTypeForDistribution`: Change `Ec2InstanceTypeForDistribution` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change instance type of Distribution Node.
+commands:
 
-- `Ec2VolumnTypeForMasterNode`: Change `Ec2VolumnTypeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume type of Distribution Node.
+`$ git clone https://github.com/Kyligence/kylin-tpch.git` 
 
-- `Ec2VolumeSizeForMasterNode`: Change `Ec2VolumeSizeForMasterNode` type in `EC2_DISTRIBUTION_PARAMS` to what you want if you want change volume size of Distribution Node.
+`$ cd kylin-tpch`
 
-- `InstanceType` in `EC2_MASTER_PARAMS`: Change `InstanceType` type in `EC2_MASTER_PARAMS` to what you want if you want to change instance type of Master Node.
+`$ git checkout deploy-kylin-on-aws`
 
-- `Ec2VolumnTypeForMasterNode`: Change `Ec2VolumnTypeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume type of Master Node.
-
-- `Ec2VolumeSizeForMasterNode`: Change `Ec2VolumeSizeForMasterNode` type in `EC2_MASTER_PARAMS` to what you want if you want to change volume size of Master Node.
-
-- `InstanceType` in `EC2_SLAVE_PARAMS`: Change `InstanceType` type in `EC2_SLAVE_PARAMS` to what you want if you want to change instance type of Slave Node.
-
-- `Ec2VolumnTypeForSlaveNode`: Change `Ec2VolumnTypeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume type of Slave Node.
-
-- `Ec2VolumeSizeForSlaveNode`: Change `Ec2VolumeSizeForSlaveNode` type in `EC2_SLAVE_PARAMS` to what you want if you want to change volume size of Slave Node.
-
-- `InstanceType` in `EC2_SCALE_SLAVE_PARAMS`: Change `InstanceType` type in `EC2_SCALE_SLAVE_PARAMS` to what you want if you want to change instance type of `scaled` Slave Node.
-
-- `Ec2VolumnTypeForSlaveNode` in `EC2_SCALE_SLAVE_PARAMS`: Change `Ec2VolumnTypeForSlaveNode` type in `EC2_SCALE_SLAVE_PARAMS` to what you want if you want to change volume type of `scaled` Slave Node.
-
-- `Ec2VolumeSizeForSlaveNode` in `EC2_SCALE_SLAVE_PARAMS`: Change `Ec2VolumeSizeForSlaveNode` type in `EC2_SCALE_SLAVE_PARAMS` to what you want if you want to change volume size of `scaled` Slave Node.
-
-
-##### VI. Initialize needed IAM role and Used User which have access to aws
+#### III. Make a Python virtual env
 
 > Note: 
 >
-> If IAM role has created, then set the role name to `cloudformation_templates/ec2-cluster-distribution.yaml`'s `Ec2OperationRole`
-> 
-> The working user who also must have the access to `S3`
+> ​	Make sure that your mac already has a Python which version is 3.6.6 or later.  
 
-##### VII. Initialize needed `SecurityGroupIngress` in `cloudformation_templates/ec2_or_emr_vpc.yaml`
+commands: 
 
-## Deploy
+(execute commands in the `/path/to/kylin-tpch`)
 
-1. Change path to `deploy-kylin-on-aws` directory
+`$ python -m venv venv`
 
-2. Make a virtual env for current repo
+`$ source ./venv/bin/activate`
 
-    > Note: 
-    >  
-    >  Use `source ./venv/bin/activate` to activate virtual env
-    >
-    >  Use `pip install -r ./requirements.txt` to install dependencies
+`$ pip install -r ./requirements.txt`
 
-3. Configure an aws account which has the access to aws console
+#### IV. Configure the `kylin-tpch/kylin_configs.yaml`
 
-    > Note: Use `aws configure` on terminal
-    > 
-    > Example:
-    > 
-    >     $ aws configure
-    >
-    >     AWS Access Key ID: 123456
-    >
-    >     AWS Secret Access Key: 123456
-    >
-    >     Default region name: cn-northwest-1
-    >
-    >     Default output format: json
+**Required parameters**:
 
-4. Use `python ./deploy.py --type [deploy|destroy|list|scale_up|scale_down]` to control cluster.
-   - deploy: create a cluster
-   
-   - destroy: destroy a already created cluster
-   
-   - list: list alive nodes which are with stack name and instance id
-   
-   - scale_up: scale up worker nodes for cluster
-   
-   - scale_down: scale down worker nodes for cluster
+- `AWS_REGION`: Current region for EC2 instances.
 
-    > Note: Default Kylin4 Cluster is `all` mode, you can set `job` or `query` mode by setting param `Ec2KylinMode` in `kylin_configs.yaml`
+- `IAMRole`: IAM role which has the access to aws authority. This parameter will be set to created **name** of IAM role.
+- `S3_FULL_BUCKET_PATH`: the prefix path of storing `jars/scripts/tar`. As example, this parameter will be set to `s3://.../kylin4-aws-test`.
+- `KeyName`: Security key name is a set of security credentials that you use to prove your identity when connecting to an instance. This parameter will be set to created **name** of  `key pair` .
+- `DB_IDENTIFIER`: this param should be only one in the `RDS -> Databases` . And it will be the name of created RDS database.
+- `DB_PORT`: this param will be the port of created RDS database, default is `3306`.
+- `DB_USER`: this param will be a login ID for the master user of your DB instance, default is `root`.
+- `DB_PASSWORD`: this param will be the password of `DB_USER` to access DB instance. default is `123456test`, it's strongly suggest you to change it.
+
+#### V. Configure the SecurityGroupIngress in the `kylin-tpch/cloudformation_templates/ec2-or-emr-vpc.yaml`
+
+> **Important**:
+>
+> 1. This security config must be set, it's important to restrict the unsafe traffic to protect user on AWS.
+> If you not set this param, tool will start failed.
+> 1.  Details about `SecurityGroupIngress`, please check [AWS::EC2::SecurityGroupIngress](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group-ingress.html).
+
+
+
+### Advanced Configs
+
+> Note:
+>
+> ​	If you want quickly to start Kylin4 Cluster on aws, then skip this part and jump to the part of  `Run` directly. 
+
+There are `9` modules params for tools.  Introductions as below:
+
+- EC2_VPC_PARAMS: this params of module are for creating a vpc.
+- EC2_RDS_PARAMS: this params of module are for creating a RDS.
+- EC2_STATIC_SERVICES_PARAMS: this params of module are for creating a Prometheus Server and other static services.
+- EC2_ZOOKEEPERS_PARAMS: this params of module are for creating a Zookeeper Cluster.
+- EC2_SPARK_MASTER_PARAMS: this params of module are for creating a Spark Master node.
+- EC2_KYLIN4_PARAMS: this params of module are for creating a Kylin4.
+- EC2_SPARK_WORKER_PARAMS: this params of module are for creating **Spark Workers**, default is **3** spark workers.
+- EC2_KYLIN4_SCALE_PARAMS: this params of module are for scaling **Kylin4 nodes**, **Kylin4 nodes range** is related to `KYLIN_SCALE_NODES`.
+- EC2_SPARK_SCALE_SLAVE_PARAMS: this params of module are for scaling **Spark workers**, **Spark Workers range** is related to `SPARK_WORKER_SCALE_NODES`.
+
+
+
+User also can customize the params in `kylin-tpch/kylin_configs.yaml` to create an expected instances. Such as the type of instance, the volume size of instance and volumn type of instance and so on.
+
+> Note:	
+>
+> 1. If you don't change `EC2Mode` from `test` to `product` in the ``kylin-tpch/kylin_configs.yml` then services will be created in default configuration! 
+>    - As an example in `EC2_STATIC_SERVICES_PARAMS`:
+>      - change `Ec2Mode `  from `test`to `product`
+>      - change `Ec2InstanceTypeForStaticServices`  from `m5.2xlarge` to `m5.4xlarge`.
+>      - change `Ec2VolumeSizeForStaticServicesNode`  from `'20'` to `'50'.`
+>      - change `Ec2VolumnTypeForStaticServicesNode` from `gp2` to `standard`.
+>      - then create the node of static service node will be a ``m5.4xlarge` and it attach a volume which size is `50` and type is `standard`.
+> 2. Now`Ec2Mode` **only effect** the related params are `Ec2InstanceTypeFor*`,`Ec2VolumeSizeFor*`  and `Ec2VolumnTypeFor`* in the params modules.
+> 3. `Ec2Mode` is only in [`EC2_STATIC_SERVICES_PARAMS`, `EC2_ZOOKEEPERS_PARAMS`, `EC2_SPARK_MASTER_PARAMS`, `EC2_KYLIN4_PARAMS`, `EC2_SPARK_WORKER_PARAMS`, `EC2_KYLIN4_SCALE_PARAMS`, `EC2_SPARK_SCALE_SLAVE_PARAMS`].
+> 4. If you don't change `USING_LOCALCACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature!
+> 5. If user want to overwrite the params in the `kylin-tpch/cloudformation_templates/*.yaml`, you can copy the param name to 
+
+
+
+## Run
+
+Use `python ./deploy.py --type [deploy|destroy|list|scale] --scale-type [up|down] --node-type [kylin|spark_worker]`  to control cluster.
+- deploy: create a cluster
+
+- destroy: destroy a created cluster
+
+- list: list alive nodes which are with stack name and instance id
+
+- scale: User must be used with `--scale-type` and `--node-type`
+
+  > Note:
+  >
+  > 1. Current support to scale up/down kylin or spark-worker.
+  > 2. Before scale up/down kylin or spark-worker nodes, Cluster must be ready .
+
+Examples:
+
+- Create a cluster
+
+```sh
+$ python ./deploy.py --type deploy
+```
+
+- Desctroy a created cluster
+
+```sh
+$ python ./deploy.py --type destroy
+```
+
+- List alive nodes which will contains the `Stack Name`,`Instance Id`,`Public Id` and `Private Ip`.
+
+```sh
+$ python ./deploy.py --type list
+```
+
+- Scale up or down kylin nodes
+
+```sh
+$ python ./deploy.py --type scale --scale-type up[|down] --node-type kylin
+```
+
+- Scale up or down spark-worker nodes
+
+```sh
+$ python ./deploy.py --type scale --scale-type up[|down] --node-type spark_worker
+```
