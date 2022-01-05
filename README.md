@@ -32,7 +32,7 @@ Target:
 
 5. Download Zookeeper, [version 3.4.9](https://archive.apache.org/dist/zookeeper/zookeeper-3.4.9/zookeeper-3.4.9.tar.gz)
 
-6. Download JDK, [version 1.8_301](https://www.oracle.com/java/technologies/downloads/#java8)
+6. Download JDK, [version 1.8_301](https://www.oracle.com/java/technologies/javase/javase8u211-later-archive-downloads.html)
 
 7. Download Node Exporter, [version 1.3.1](https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz)
 
