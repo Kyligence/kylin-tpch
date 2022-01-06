@@ -5,9 +5,9 @@
 1. Deploy Kylin4 on Ec2 with Spark Standalone mode.
 2. Removed the dependency of hadoop and start quickly.
 3. Support to scale worker nodes for Spark standalone Cluster quickly and conveniently.
-4. Enhance performance for query in using  `Local Cache + Soft Affinity` feature (Experimental Feature), please check the [details](https://mp.weixin.qq.com/s/jEPvWJwSClQcMLPm64s4fQ).
+4. Improve performance for query in using  `Local Cache + Soft Affinity` feature (Experimental Feature), please check the [details](https://mp.weixin.qq.com/s/jEPvWJwSClQcMLPm64s4fQ).
 5. Support to monitor cluster status with prometheus server.
-6. Create a Kylin4 cluster on aws in 10 minutes.
+6. Create a Kylin4 cluster on EC2 in 10 minutes.
 
 ## Structure
 
@@ -75,7 +75,7 @@ When cluster was created, services and nodes will like below:
 
 
 
-### Initilize a S3 direcotry
+### Initialize a S3 direcotry
 
 #### I. Create a directory on S3
 
