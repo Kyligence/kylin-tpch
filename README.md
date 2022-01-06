@@ -9,6 +9,17 @@
 5. Support to monitor cluster status with prometheus server.
 6. Create a Kylin4 cluster on aws in 10 minutes.
 
+## Structure
+
+When cluster was created, services and nodes will like below:
+
+![structure](./images/structure.png)
+
+- Services are created as the number order from 1 to 4.
+- Every machine node is presented by a white box. 
+- `Kylin Node` and `Spark Worker` Node can be scaled.
+- Whole cluster will has only one RDS and only one the machine node which contains `Prometheus Server` and `Hive MetaStore` service.
+
 
 
 ## Prerequisites 
