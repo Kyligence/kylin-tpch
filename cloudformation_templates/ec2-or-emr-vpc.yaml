@@ -153,6 +153,12 @@ Resources:
     Properties:
       SubnetId: !Ref Ec2OrEmrBenchMarkSubnet
       RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
+  Subnet2RouteTableAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    DeletionPolicy: Delete
+    Properties:
+      SubnetId: !Ref Ec2OrEmrBenchMarkSubnet02
+      RouteTableId: !Ref Ec2OrEmrBenchMarkRoutetable
   Ec2OrEmrBenchMarkSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     DependsOn: Ec2OrEmrBenchMarkVpc
