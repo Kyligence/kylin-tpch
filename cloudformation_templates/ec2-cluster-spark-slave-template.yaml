@@ -127,7 +127,7 @@ Resources:
         - Key: Name
           Value: !Join
             - ''
-            - - Slave
+            - - Slave Scale
               - !Ref WorkerNum
               - Node for kylin4
       InstanceType: !Ref InstanceType

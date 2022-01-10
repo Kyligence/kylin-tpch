@@ -9,7 +9,9 @@ def deploy_on_aws(deploy_type: str, scale_type: str, node_type: str) -> None:
     if not aws_engine.is_ec2_cluster:
         msg = f'Now only supported platform: EC2, please check `DEPLOY_PLATFORM`.'
         raise Exception(msg)
+
     if deploy_type == 'deploy':
+        aws_engine.init_env()
         aws_engine.launch_cluster()
     elif deploy_type == 'destroy':
         aws_engine.destroy_cluster()

@@ -1,15 +1,19 @@
 import logging
+import os
+import re
 import time
 from ast import literal_eval
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, List, Tuple
 
 import boto3
+import botocore
 from botocore.exceptions import ClientError, WaiterError, ParamValidationError
 
 from constant.client import Client
 from constant.commands import Commands
 from constant.config import Config
+from constant.path import JARS_PATH, TARS_PATH, SCRIPTS_PATH
 from constant.yaml_files import File
 from constant.yaml_params import Params
 from utils import read_template, full_path_of_yaml, generate_nodes
@@ -20,7 +24,6 @@ logger = logging.getLogger(__name__)
 class AWSInstance:
 
     def __init__(self, config):
-        # DEPLOY_PLATFORM
         self.config = config
         # global params
         self.vpc_id = None
@@ -75,6 +78,14 @@ class AWSInstance:
     @property
     def ssm_client(self):
         return boto3.client('ssm', region_name=self.region)
+
+    @property
+    def s3_client(self):
+        return boto3.client('s3', region_name=self.region)
+
+    @property
+    def iam_client(self):
+        return boto3.client('iam', region_name=self.region)
 
     @property
     def create_complete_waiter(self):
@@ -161,18 +172,57 @@ class AWSInstance:
         return full_path_of_yaml(File.SPARK_WORKER_SCALE_YAML.value)
 
     @property
+    def s3_path_match(self) -> re.Match:
+        original_path: str = self.config[Params.S3_FULL_BUCKET_PATH.value]
+        match = re.match(pattern=r'^s3://([^/]+)/(.*?([^/]+)/?)$', string=original_path)
+        if not match:
+            raise Exception(f"Invalid S3 bucket path: {original_path}, please check.")
+        return match
+
+    @property
     def bucket_full_path(self) -> str:
-        full_path: str = self.config[Params.S3_FULL_BUCKET_PATH.value]
-        assert full_path.startswith('s3:/'), f'bucket full path must start with s3:/'
+        full_path = self.s3_path_match.group(0)
         if full_path.endswith('/'):
             full_path = full_path.rstrip('/')
         return full_path
 
     @property
     def bucket_path(self) -> str:
-        # remove thre prefix of 's3:/'
+        # remove the prefix of 's3:/'
         path = self.bucket_full_path[len('s3:/'):]
         return path
+
+    @property
+    def bucket(self) -> str:
+        # get the bucket
+        return self.s3_path_match.group(1)
+
+    @property
+    def bucket_dir(self) -> str:
+        directory = self.s3_path_match.group(2)
+        if directory.endswith('/'):
+            return directory
+        return directory + '/'
+
+    @property
+    def bucket_tars_dir(self) -> str:
+        return self.bucket_dir + 'tar/'
+
+    @property
+    def bucket_scripts_dir(self) -> str:
+        return self.bucket_dir + 'scripts/'
+
+    @property
+    def bucket_jars_dir(self) -> str:
+        return self.bucket_dir + 'jars/'
+
+    @property
+    def iam_role(self) -> str:
+        return self.config[Config.IAM.value]
+
+    @property
+    def key_pair(self) -> str:
+        return self.config[Config.KEY_PAIR.value]
 
     def get_vpc_id(self) -> str:
         if not self.vpc_id:
@@ -889,9 +939,22 @@ class AWSInstance:
         for command in commands:
             self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
 
+    def refresh_prometheus_spark_driver_of_kylin_after_scale_up(self, expected_nodes: Dict) -> None:
+        commands = self.refresh_prometheus_spark_driver_of_kylin_after_scale(expected_nodes)
+        instance_id = self.get_instance_id(self.static_service_stack_name)
+        for command in commands:
+            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+
     def refresh_prometheus_config_after_scale_down(self, exists_nodes: Dict) -> None:
         instance_id = self.get_instance_id(self.static_service_stack_name)
         commands = [Commands.PROMETHEUS_DELETE_CFG_COMMAND.value.format(node=worker) for worker in exists_nodes.keys()]
+        for command in commands:
+            self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
+
+    def refresh_prometheus_spark_driver_of_kylin_after_scale_down(self, exists_nodes: Dict) -> None:
+        instance_id = self.get_instance_id(self.static_service_stack_name)
+        commands = [Commands.SPARK_DRIVER_METRIC_OF_KYLIN_DELETE_CFG_COMMAND.value.format(node=worker)
+                    for worker in exists_nodes.keys()]
         for command in commands:
             self.exec_script_instance_and_return(name_or_id=instance_id, script=command)
 
@@ -942,9 +1005,11 @@ class AWSInstance:
 
     def refresh_spark_metrics_commands(self) -> List:
         spark_master_host = self.get_spark_master_host()
+        # kylin ip will be the host of spark driver and spark worker
+        kylin_ip = self.get_kylin_private_ip()
         commands = [
-            Commands.SPARK_DRIVER_METRIC_COMMAND.value.format(node='spark_driver', host=spark_master_host),
-            Commands.SPARK_WORKER_METRIC_COMMAND.value.format(node='spark_worker', host=spark_master_host),
+            Commands.SPARK_DRIVER_METRIC_COMMAND.value.format(node='spark_driver_in_kylin', host=kylin_ip),
+            Commands.SPARK_WORKER_METRIC_COMMAND.value.format(node='spark_worker_in_kylin', host=kylin_ip),
             Commands.SPARK_APPLICATIONS_METRIC_COMMAND.value.format(node='spark_applications', host=spark_master_host),
             Commands.SPARK_MASTER_METRIC_COMMAND.value.format(node='spark_master', host=spark_master_host),
             Commands.SPARK_EXECUTORS_METRIC_COMMAND.value.format(node='spark_executors', host=spark_master_host),
@@ -954,6 +1019,12 @@ class AWSInstance:
     @staticmethod
     def refresh_prometheus_commands_after_scale(expected_nodes: Dict) -> List:
         commands = [Commands.PROMETHEUS_CFG_COMMAND.value.format(node=node, host=host)
+                    for node, host in expected_nodes.items()]
+        return commands
+
+    @staticmethod
+    def refresh_prometheus_spark_driver_of_kylin_after_scale(expected_nodes: Dict) -> List:
+        commands = [Commands.SPARK_DRIVER_METRIC_OF_KYLIN_CHECK_COMMAND.value.format(node=node, host=host)
                     for node, host in expected_nodes.items()]
         return commands
 
@@ -1196,6 +1267,110 @@ class AWSInstance:
         is_rds_matched_port = str(rds_endpoints['Port']) == self.db_port
         return is_rds_available and is_rds_matched_port
 
+    def valid_s3_bucket(self) -> None:
+        if not self.is_s3_directory_exists(self.bucket, self.bucket_dir):
+            msg = f'Invalid S3 bucket path: {self.bucket_full_path}, please check.'
+            raise Exception(msg)
+
+    def valid_iam_role(self) -> None:
+        if not self.is_iam_role_exists():
+            msg = f'Invalid IAM role: {self.iam_role}, please check.'
+            raise Exception(msg)
+
+    def is_iam_role_exists(self) -> bool:
+        try:
+            self.iam_client.get_role(RoleName=self.iam_role)
+            return True
+        except self.iam_client.exceptions.NoSuchEntityException:
+            return False
+
+    def valid_key_pair(self) -> None:
+        if not self.is_key_pair_exists():
+            msg = f'Invalid KeyPair: {self.key_pair}. please check.'
+            raise Exception(msg)
+
+    def is_key_pair_exists(self) -> bool:
+        try:
+            self.ec2_client.describe_key_pairs(KeyNames=[self.key_pair])
+            return True
+        except ClientError:
+            return False
+
+    def is_object_exists_on_s3(self, filename: str, bucket: str, bucket_dir: str) -> bool:
+        try:
+            self.s3_client.head_object(Bucket=bucket, Key=bucket_dir+filename)
+        except botocore.exceptions.ClientError as ex:
+            assert ex.response['Error']['Code'] == '404'
+            return False
+        return True
+
+    def is_s3_directory_exists(self, bucket: str, bucket_dir: str) -> bool:
+        if bucket_dir.endswith('/'):
+            bucket_dir = bucket_dir.rstrip('/')
+
+        resp = self.s3_client.list_objects(Bucket=bucket, Prefix=bucket_dir, Delimiter='/', MaxKeys=1)
+        return 'CommonPrefixes' in resp
+
+    def upload_tars_to_s3(self, tars: List) -> None:
+        for tar in tars:
+            if self.is_object_exists_on_s3(tar, self.bucket, self.bucket_tars_dir):
+                logger.info(f'{tar} already exists, skip upload it.')
+                continue
+            self.upload_file_to_s3(TARS_PATH, tar, self.bucket, self.bucket_tars_dir)
+
+    def check_tars_on_s3(self, tars: List) -> None:
+        for tar in tars:
+            assert self.is_object_exists_on_s3(tar, self.bucket, self.bucket_tars_dir), \
+                f'{tar} not exists, please check.'
+
+    def upload_jars_to_s3(self, jars: List) -> None:
+        for jar in jars:
+            if self.is_object_exists_on_s3(jar, self.bucket, self.bucket_jars_dir):
+                logger.info(f'{jar} already exists, skip upload it.')
+                continue
+            self.upload_file_to_s3(JARS_PATH, jar, self.bucket, self.bucket_jars_dir)
+
+    def check_jars_on_s3(self, jars: List) -> None:
+        for jar in jars:
+            assert self.is_object_exists_on_s3(jar, self.bucket, self.bucket_jars_dir), \
+                f'{jar} not exists, please check.'
+
+    def upload_scripts_to_s3(self, scripts: List) -> None:
+        for script in scripts:
+            if self.is_object_exists_on_s3(script, self.bucket, self.bucket_scripts_dir):
+                logger.info(f'{script} already exists, skip upload it.')
+                continue
+            self.upload_file_to_s3(SCRIPTS_PATH, script, self.bucket, self.bucket_scripts_dir)
+
+    def check_scripts_on_s3(self, scripts: List) -> None:
+        for script in scripts:
+            assert self.is_object_exists_on_s3(script, self.bucket, self.bucket_scripts_dir), \
+                f'{script} not exists, please check.'
+
+    def upload_file_to_s3(self, local_file_dir: str, filename: str, bucket: str, bucket_dir: str) -> None:
+        logger.info(f'Uploading {filename} from {local_file_dir} to S3 bucket: {bucket}/{bucket_dir}.')
+        self.s3_client.upload_file(os.path.join(local_file_dir, filename), bucket, bucket_dir + filename)
+        logger.info(f'Uploaded {filename} successfully.')
+
+    def is_stack_deleted_complete(self, stack_name: str) -> bool:
+        if self.is_stack_create_complete(stack_name):
+            # return directly if current stack status is 'CREATE_COMPLETE'
+            return False
+        if self._stack_delete_complete(stack_name):
+            return True
+        return False
+
+    def is_stack_create_complete(self, stack_name: str) -> bool:
+        return self._stack_status_check(name_or_id=stack_name, status='CREATE_COMPLETE')
+
+    def is_stack_delete_complete(self, stack_name: str) -> bool:
+        return self._stack_status_check(name_or_id=stack_name, status='DELETE_COMPLETE')
+
+    def is_stack_complete(self, stack_name: str) -> bool:
+        if self._stack_complete(stack_name):
+            return True
+        return False
+
     def _validate_spark_worker_scale(self, stack_name: str) -> None:
         if stack_name not in self.scaled_spark_workers_stacks:
             msg = f'{stack_name} not in scaled list, please check.'
@@ -1208,24 +1383,12 @@ class AWSInstance:
             logger.error(msg)
             raise Exception(msg)
 
-    def _stack_status(self, stack_name: str, required_status: str = 'CREATE_COMPLETE') -> bool:
-        return self._stack_status_check(name_or_id=stack_name, status=required_status)
-
-    def _stack_deleted(self, stack_name: str, required_status: str = 'DELETE_COMPLETE') -> bool:
-        return self._stack_status_check(name_or_id=stack_name, status=required_status)
-
     def _stack_status_check(self, name_or_id: str, status: str) -> bool:
         try:
             resp: Dict = self.cf_client.describe_stacks(StackName=name_or_id)
         except ClientError:
             return False
         return resp['Stacks'][0]['StackStatus'] == status
-
-    def is_stack_complete(self, stack_name: str) -> bool:
-        if self._stack_complete(stack_name):
-            logger.warning(f"{stack_name} already complete, skip create it again.")
-            return True
-        return False
 
     def _stack_complete(self, stack_name: str) -> bool:
         try:
@@ -1253,12 +1416,6 @@ class AWSInstance:
         except WaiterError:
             return False
         return True
-
-    def is_stack_deleted_complete(self, stack_name: str) -> bool:
-        if self._stack_delete_complete(stack_name):
-            logger.warning(f"{stack_name} already deleted, skip delete it.")
-            return True
-        return False
 
     def _stack_delete_complete(self, stack_name: str) -> bool:
         try:
@@ -1318,10 +1475,18 @@ class AWS:
     def is_destroy_all(self) -> bool:
         return self.config[Params.ALWAYS_DESTROY_ALL.value] is True
 
+    def validate_params(self) -> None:
+        self.cloud_instance.valid_s3_bucket()
+        self.cloud_instance.valid_iam_role()
+        self.cloud_instance.valid_key_pair()
+
     def get_resources(self, stack_name: str) -> Dict:
         return self.cloud_instance.get_stack_output(stack_name)
 
     def init_cluster(self) -> None:
+        # validate params before create cluster.
+        self.validate_params()
+
         if not self.is_instances_ready:
             self.cloud_instance.create_vpc_stack()
             self.cloud_instance.create_rds_stack()
@@ -1398,12 +1563,17 @@ class AWS:
             logger.info("Refresh prometheus config after scale up.")
             if not_exists_nodes:
                 self.cloud_instance.refresh_prometheus_config_after_scale_up(not_exists_nodes)
+                if node_type == 'kylin':
+                    self.cloud_instance.refresh_prometheus_spark_driver_of_kylin_after_scale_up(not_exists_nodes)
         else:
             logger.info(f"Checking exists prometheus config after scale down.")
             exists_nodes = self.cloud_instance.check_prometheus_config_after_scale_down(node_type)
             logger.info("Refresh prometheus config after scale down.")
             if exists_nodes:
                 self.cloud_instance.refresh_prometheus_config_after_scale_down(exists_nodes)
+                if node_type == 'kylin':
+                    self.cloud_instance.refresh_prometheus_spark_driver_of_kylin_after_scale_down(exists_nodes)
+
         self.cloud_instance.restart_prometheus_server()
 
     @staticmethod
@@ -1427,3 +1597,14 @@ class AWS:
         else:
             worker_nodes = literal_eval(self.config[Config.SPARK_WORKER_SCALE_NODES.value])
             return generate_nodes(worker_nodes)
+
+    def upload_needed_files(self, tars: List, jars: List, scripts: List) -> None:
+        self.cloud_instance.valid_s3_bucket()
+        self.cloud_instance.upload_tars_to_s3(tars)
+        self.cloud_instance.upload_jars_to_s3(jars)
+        self.cloud_instance.upload_scripts_to_s3(scripts)
+
+    def check_needed_files(self, tars: List, jars: List, scripts: List) -> None:
+        self.cloud_instance.check_tars_on_s3(tars)
+        self.cloud_instance.check_jars_on_s3(jars)
+        self.cloud_instance.check_scripts_on_s3(scripts)

@@ -6,9 +6,9 @@ Parameters:
   KylinVersion:
     Type: String
     Description: this version is for tag
-    Default: 4
+    Default: 4.0.0
     AllowedValues:
-      - 4
+      - 4.0.0
   ClusterType:
     Type: String
     Default: ec2
@@ -174,7 +174,7 @@ Resources:
               - !Ref ClusterType
               - SecurityGroup
       SecurityGroupIngress:
-        # Need to set this
+        # Important!!! Need to set this.
         - IpProtocol: tcp
           FromPort: '22'
           ToPort: '22'

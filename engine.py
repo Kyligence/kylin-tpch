@@ -40,3 +40,20 @@ class Engine:
     def scale_nodes(self, scale_type: str, node_type: str) -> None:
         self.engine_utils.scale_nodes(scale_type=scale_type, node_type=node_type)
         logger.info(f'Current scaling {scale_type} {node_type} nodes successfully.')
+
+    def is_inited_env(self) -> bool:
+        try:
+            self.engine_utils.check_needed_files()
+            return True
+        except AssertionError:
+            return False
+
+    def init_env(self) -> None:
+        if self.is_inited_env():
+            logger.info('Env already inited, skip init again.')
+            return
+        self.engine_utils.download_tars()
+        self.engine_utils.download_jars()
+        self.engine_utils.upload_needed_files()
+        # check again
+        assert self.is_inited_env()
