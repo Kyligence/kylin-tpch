@@ -283,11 +283,11 @@ commands:
 
 #### IV. Configure the `kylin.properties` in `backup/properties` directories.<a name="cluster"></a>
 
- 	1. The `kylin.properties` is for starting kylin instance in the cluster.
- 	2. Default cluster will check the `kylin.properties` in the `kylin-tpch/backup/properties/default`, and other specific cluster will check the related num directory such as `1`, `2` and `3`.
- 	3. User need to create new dir for the cluster num in `kylin-tpch/backup/properties`, and name it to the `{cluster num}`, such as `1`, `2` ,`3`  and so on. The range of cluster num must be in `CLUSTER_INDEXES` which is configured in the `kylin-tpch/kylin_configs.yml`.
- 	4. Follow the `2.` step, copy the `kylin.properties.template` which is in `kylin-tpch/backup/properties/templates` to the related `{cluster num} ` directories， and rename the template to `kylin.properties`. 
- 	5. The range of cluster nums must match the the config `CLUSTER_INDEXES`, such as `CLUSTER_INDEXES: (1, 3)` then the directories must be `1`, `2`,`3` in the `kylin-tpch/backup/properties`.
+1. The `kylin.properties` is for starting kylin instance in the cluster.
+2. Default cluster will check the `kylin.properties` in the `kylin-tpch/backup/properties/default`, and other specific cluster will check the related num directory such as `1`, `2` and `3`.
+3. User need to create new dir for the cluster num in `kylin-tpch/backup/properties`, and name it to the `{cluster num}`, such as `1`, `2` ,`3`  and so on. The range of cluster num must be in `CLUSTER_INDEXES` which is configured in the `kylin-tpch/kylin_configs.yml`.
+4. Follow the `2.` step, copy the `kylin.properties.template` which is in `kylin-tpch/backup/properties/templates` to the related `{cluster num} ` directories， and rename the template to `kylin.properties`. 
+5. The range of cluster nums must match the the config `CLUSTER_INDEXES`, such as `CLUSTER_INDEXES: (1, 3)` then the directories must be `1`, `2`,`3` in the `kylin-tpch/backup/properties`.
 
 ![kylin properties](./images/kylinproperties.png)
 
@@ -359,7 +359,7 @@ Use `python ./deploy.py --type [deploy|destroy|list|scale] --scale-type [up|down
   >
   > 1. Current support to scale up/down `kylin` or `spark_worker` or `cluster`.
   > 2. Before scale up/down `kylin` or `spark_worker` nodes, Cluster must be ready .
-  > 2. If you want to scale a `kylin` or `spark_worker` node to a specify cluster, please add the `--cluster {cluster num} `to specify the node add to the cluster.
+  > 2. If you want to scale a `kylin` or `spark_worker` node to a specify cluster, please add the `--cluster {cluster num}` to specify the node add to the cluster.
 
 ### Examples
 
