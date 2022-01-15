@@ -1,7 +1,7 @@
 import logging
 import time
 
-from basic import BasicHttpClient
+from client.basic import BasicHttpClient
 
 logger = logging.getLogger(__name__)
 

@@ -18,9 +18,9 @@ class Commands(Enum):
     PROMETHEUS_CFG_COMMAND = '''echo '  - job_name: "{node}"\n    static_configs:\n    - targets: ["{host}:9100"]' >> /home/ec2-user/prometheus/prometheus.yml '''
     SPARK_DRIVER_METRIC_OF_KYLIN_COMMAND = """echo '  - job_name: "kylin-spark-driver-{node}"\n    metrics_path: /metrics/prometheus\n    static_configs:\n    - targets: ["{host}:4040"]' >> /home/ec2-user/prometheus/prometheus.yml """
     PROMETHEUS_CFG_CHECK_COMMAND = '''grep -Fq "{node}" /home/ec2-user/prometheus/prometheus.yml; echo $?'''
-    SPARK_DRIVER_METRIC_OF_KYLIN_CHECK_COMMAND = '''grep -Fq "kylin-spark-driver-{node}" /home/ec2-user/prometheus/prometheus.yml; echo $?'''
     PROMETHEUS_DELETE_CFG_COMMAND = '''sed -i "/{node}/,+2d" /home/ec2-user/prometheus/prometheus.yml'''
     SPARK_DRIVER_METRIC_OF_KYLIN_DELETE_CFG_COMMAND = '''sed -i "/kylin-spark-driver-{node}/,+2d" /home/ec2-user/prometheus/prometheus.yml'''
+
     # Spark metric commands
     # Special COMMAND_TEMPLATE for spark metrics into prometheus
     SPARK_MASTER_METRIC_COMMAND = """echo '  - job_name: "{node}"\n    metrics_path: /metrics/master/prometheus\n    static_configs:\n    - targets: ["{host}:8080"]' >> /home/ec2-user/prometheus/prometheus.yml """

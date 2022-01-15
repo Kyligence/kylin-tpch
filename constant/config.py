@@ -13,6 +13,8 @@ class Config(Enum):
     ENABLE_SOFT_AFFINITY = 'ENABLE_LOCAL_CACHE_SOFT_AFFINITY'
     IAM = 'IAMRole'
     KEY_PAIR = 'KeyName'
+    CLUSTER_SCALE_INDEXES = 'CLUSTER_INDEXES'
+    CIDR_IP = 'CIDR_IP'
 
     # Deploy params
     DEPLOY_PLATFORM = 'DEPLOY_PLATFORM'
@@ -39,7 +41,7 @@ class Config(Enum):
 
     # RDS Params
     DB_IDENTIFIER = 'DB_IDENTIFIER'
-    DB_HOST = 'DB_HOST'
+
     DB_PORT = 'DB_PORT'
     DB_USER = 'DB_USER'
     DB_PASSWORD = 'DB_PASSWORD'

@@ -27,6 +27,13 @@ Parameters:
   Ec2OperationRole:
     Type: String
     Description: Should be created by pre-step, must not be null !
+  CidrIp:
+    Type: String
+    Description: An inbound rule permits instances to receive traffic from the specified IPv4 or IPv6 CIDR address range, or from the instances associated with the specified security group.
+
+Conditions:
+  NotNullCidrIp:
+    !Not [!Equals [!Ref CidrIp, ""]]
 
 Mappings:
   Region2Az:
@@ -43,6 +50,7 @@ Resources:
         - !Ref Ec2OperationRole
   Ec2OrEmrBenchMarkVpc:
     Type: AWS::EC2::VPC
+    Condition: NotNullCidrIp
     Properties:
       CidrBlock: !Ref VpcCidrBlock
       EnableDnsSupport: true
@@ -174,11 +182,36 @@ Resources:
               - !Ref ClusterType
               - SecurityGroup
       SecurityGroupIngress:
-        # Important!!! Need to set this.
+        # For SSH
         - IpProtocol: tcp
           FromPort: '22'
           ToPort: '22'
-          CidrIp:
+          CidrIp: !Ref CidrIp
+        # For Grafana
+        - IpProtocol: tcp
+          FromPort: '3000'
+          ToPort: '3000'
+          CidrIp: !Ref CidrIp
+        # For Prometheus
+        - IpProtocol: tcp
+          FromPort: '9090'
+          ToPort: '9100'
+          CidrIp: !Ref CidrIp
+        # For Kylin
+        - IpProtocol: tcp
+          FromPort: '7070'
+          ToPort: '7070'
+          CidrIp: !Ref CidrIp
+        # For Spark Master
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: !Ref CidrIp
+        # For Spark Worker/Executor
+        - IpProtocol: tcp
+          FromPort: '4040'
+          ToPort: '4050'
+          CidrIp: !Ref CidrIp
     DeletionPolicy: Delete
   Ec2OrEmrBenchMarkSecurityGroupFullTcpIngress:
     Type: AWS::EC2::SecurityGroupIngress

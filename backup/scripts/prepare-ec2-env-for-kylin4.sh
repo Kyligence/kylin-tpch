@@ -54,15 +54,13 @@ function help() {
                     --db-password db-password-for-kylin
                     --db-port db-port-for-kylin
                     --db-user db-user-for-kylin
-                    --zookeeper-host zookeeper-host-for-kylin
                     --kylin-mode mode-for-kylin[all|query|job]
-                    --waiting-time time-for-start-services
                     --local-soft whether-to-use-local-cache+soft-affinity
-                    --spark-master spark-master-host"
+                    --cluster-num specify-a-cluster"
   exit 0
 }
 
-if [[ $# -ne 22 ]]; then
+if [[ $# -ne 18 ]]; then
   help
 fi
 
@@ -80,17 +78,14 @@ while [[ $# != 0 ]]; do
     DATABASE_USER=$2
   elif [[ $1 == '--db-port' ]]; then
     DATABASE_PORT=$2
-  elif [[ $1 == "--zookeeper-host" ]]; then
-    ZOOKEEPER_HOST=$2
   elif [[ $1 == "--kylin-mode" ]]; then
     # kylin mode in [ 'all', 'query', 'job' ]
     KYLIN_MODE=$2
-  elif [[ $1 == "--waiting-time" ]]; then
-    WAITING_TIME=$2
   elif [[ $1 == "--local-soft" ]]; then
     LOCAL_CACHE_SOFT_AFFINITY=$2
-  elif [[ $1 == '--spark-master' ]]; then
-    SPARK_MASTER=$2
+  elif [[ $1 == '--cluster-num' ]]; then
+    # default value is 'default', and cluster num is from 1 to positive infinity.
+    CLUSTER_NUM=$2
   else
     help
   fi
@@ -570,119 +565,9 @@ function init_kylin() {
     fi
   fi
 
-  if [[ ${KYLIN_MODE} == "all" ]]; then
-    cat <<EOF >${KYLIN_HOME}/conf/kylin.properties
-kylin.server.mode=${KYLIN_MODE}
-kylin.metadata.url=kylin_metadata@jdbc,url=jdbc:mysql://${DATABASE_HOST}:${DATABASE_PORT}/kylin,username=root,password=${DATABASE_PASSWORD},maxActive=10,maxIdle=10
-kylin.env.zookeeper-connect-string=${ZOOKEEPER_HOST}
-kylin.env.hdfs-working-dir=${CONFIG_PATH_TO_BUCKET}/working_dir/
-kylin.cube.cubeplanner.enabled=true
-## Build Engine Resource
-kylin.engine.spark-conf.spark.eventLog.dir=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.history.fs.logDirectory=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.master=spark://${SPARK_MASTER}:7077
-
-kylin.engine.spark-conf.spark.executor.cores=3
-kylin.engine.spark-conf.spark.executor.instances=20
-kylin.engine.spark-conf.spark.executor.memory=12GB
-kylin.engine.spark-conf.spark.executor.memoryOverhead=1GB
-
-### support prometheus
-kylin.engine.spark-conf.spark.ui.prometheus.enabled=true
-kylin.engine.spark-conf.spark.executor.processTreeMetrics.enabled=true
-
-## Parquet Column Index
-kylin.engine.spark-conf.spark.hadoop.parquet.page.size=1048576
-kylin.engine.spark-conf.spark.hadoop.parquet.page.row.count.limit=100000
-kylin.engine.spark-conf.spark.hadoop.parquet.block.size=268435456
-kylin.query.spark-conf.spark.hadoop.parquet.filter.columnindex.enabled=true
-
-## Query Engine Resource
-kylin.query.spark-conf.spark.master=spark://${SPARK_MASTER}:7077
-kylin.query.spark-conf.spark.driver.cores=1
-kylin.query.spark-conf.spark.driver.memory=8GB
-kylin.query.spark-conf.spark.driver.memoryOverhead=1G
-kylin.query.spark-conf.spark.executor.instances=30
-kylin.query.spark-conf.spark.executor.cores=2
-kylin.query.spark-conf.spark.executor.memory=7G
-kylin.query.spark-conf.spark.executor.memoryOverhead=1G
-kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
-
-### support prometheus
-kylin.query.spark-conf.spark.ui.prometheus.enabled=true
-kylin.query.spark-conf.spark.executor.processTreeMetrics.enabled=true
-
-## Disable canary
-kylin.canary.sparder-context-canary-enabled=false
-## Query Cache
-kylin.query.cache-enabled=true
-
-### Prepare for cluster mode
-kylin.job.scheduler.default=100
-kylin.server.self-discovery-enabled=true
-
-EOF
-  elif [[ ${KYLIN_MODE} == "query" ]]; then
-    cat <<EOF >${KYLIN_HOME}/conf/kylin.properties
-# Kylin server mode, valid value [all, query, job]
-kylin.server.mode=${KYLIN_MODE}
-kylin.metadata.url=kylin_metadata@jdbc,url=jdbc:mysql://${DATABASE_HOST}:${DATABASE_PORT}/kylin,username=root,password=${DATABASE_PASSWORD},maxActive=10,maxIdle=10
-kylin.env.zookeeper-connect-string=${ZOOKEEPER_HOST}
-kylin.env.hdfs-working-dir=${CONFIG_PATH_TO_BUCKET}/working_dir/
-## Query Engine Resource
-kylin.query.spark-conf.spark.master=spark://${SPARK_MASTER}:7077
-kylin.query.spark-conf.spark.driver.cores=1
-kylin.query.spark-conf.spark.driver.memory=8GB
-kylin.query.spark-conf.spark.driver.memoryOverhead=1G
-kylin.query.spark-conf.spark.executor.instances=30
-kylin.query.spark-conf.spark.executor.cores=2
-kylin.query.spark-conf.spark.executor.memory=7G
-kylin.query.spark-conf.spark.executor.memoryOverhead=1G
-kylin.query.spark-conf.spark.sql.parquet.filterPushdown=false
-
-### support prometheus
-kylin.query.spark-conf.spark.ui.prometheus.enabled=true
-kylin.query.spark-conf.spark.executor.processTreeMetrics.enabled=true
-
-## Disable canary
-kylin.canary.sparder-context-canary-enabled=false
-## Query Cache
-kylin.query.cache-enabled=true
-EOF
-
-  elif [[ ${KYLIN_MODE} == "job" ]]; then
-    cat <<EOF >${KYLIN_HOME}/conf/kylin.properties
-kylin.server.mode=${KYLIN_MODE}
-kylin.metadata.url=kylin_metadata@jdbc,url=jdbc:mysql://${DATABASE_HOST}:${DATABASE_PORT}/kylin,username=root,password=${DATABASE_PASSWORD},maxActive=10,maxIdle=10
-kylin.env.zookeeper-connect-string=${ZOOKEEPER_HOST}
-kylin.env.hdfs-working-dir=${CONFIG_PATH_TO_BUCKET}/working_dir/
-kylin.cube.cubeplanner.enabled=true
-## Build Engine Resource
-kylin.engine.spark-conf.spark.eventLog.dir=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.history.fs.logDirectory=${CONFIG_PATH_TO_BUCKET}/working_dir/spark-history
-kylin.engine.spark-conf.spark.master=spark://${SPARK_MASTER}:7077
-
-kylin.engine.spark-conf.spark.executor.cores=3
-kylin.engine.spark-conf.spark.executor.instances=20
-kylin.engine.spark-conf.spark.executor.memory=12GB
-kylin.engine.spark-conf.spark.executor.memoryOverhead=1GB
-
-## Parquet Column Index
-kylin.engine.spark-conf.spark.hadoop.parquet.page.size=1048576
-kylin.engine.spark-conf.spark.hadoop.parquet.page.row.count.limit=100000
-kylin.engine.spark-conf.spark.hadoop.parquet.block.size=268435456
-kylin.query.spark-conf.spark.hadoop.parquet.filter.columnindex.enabled=true
-
-### support prometheus
-kylin.engine.spark-conf.spark.ui.prometheus.enabled=true
-kylin.engine.spark-conf.spark.executor.processTreeMetrics.enabled=true
-
-### Prepare for cluster mode
-kylin.job.scheduler.default=100
-kylin.server.self-discovery-enabled=true
-EOF
-
-  fi
+  # Overwrite kylin.properties
+  logging info "Overwrite kylin.properties from ${PATH_TO_BUCKET}/properties/${CLUSTER_NUM}/kylin.properties to ${KYLIN_HOME}/conf/kylin.properties in region ${CURRENT_REGION}."
+  aws s3 cp ${PATH_TO_BUCKET}/properties/${CLUSTER_NUM}/kylin.properties ${KYLIN_HOME}/conf/kylin.properties --region ${CURRENT_REGION}
 
   if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]] && ( [[ ${KYLIN_MODE} == "all" ]] || [[ ${KYLIN_MODE} == "query" ]] ); then
     cat <<EOF >> ${KYLIN_HOME}/conf/kylin.properties
@@ -720,7 +605,7 @@ kylin.query.spark-conf.spark.hadoop.alluxio.user.update.file.accesstime.disabled
 EOF
     fi
 
-  logging info "Kylin already inited ..."
+  logging info "Kylin inited ..."
   touch ${HOME_DIR}/.inited_kylin
   logging info "Kylin is ready ..."
 }
@@ -753,7 +638,6 @@ function sample_for_kylin() {
   ${KYLIN_HOME}/bin/sample.sh
   if [[ $? -ne 0 ]]; then
     logging error "Sample for kylin is failed, please check ..."
-    exit 0
   else
     logging info "Sample for kylin is successful, enjoy it ..."
   fi

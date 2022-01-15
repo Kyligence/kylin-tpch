@@ -72,7 +72,7 @@ class BasicHttpClient:
                                               raw_response=raw_response
                                               )
 
-    @retry(stop_max_attempt_number=3, wait_random_min=1000, wait_random_max=2000, retry_on_exception=_result)
+    @retry(stop_max_attempt_number=3, wait_random_min=100, wait_random_max=200, retry_on_exception=_result)
     def _request_with_session(self, session, method, url, params=None, data=None,  # pylint: disable=too-many-arguments
                               json=None, files=None, headers=None, stream=False,
                               to_json=True, timeout=60, content=False, raw_response=False):

@@ -45,10 +45,10 @@ Parameters:
       - false
   EMREc2KeyName:
     Type: String
-  Ec2WaitingTime:
-    Type: Number
-    Default: 50
-    Description: sleep time to waitring services started in kylin4 node
+
+  ClusterNum:
+    Type: String
+    Default: default
 
   Ec2Mode:
     Type: String
@@ -199,7 +199,7 @@ Resources:
               #!/bin/bash -xe
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateKylin4ScriptFileName} . --region ${PrivateRegion}
-              bash ${PrivateKylin4ScriptFileName} --bucket-url ${PrivateBucketPath} --region ${PrivateRegion} --db-host ${PrivateDbHost} --db-password ${PrivateDbPass} --db-user ${PrivateDbUser} --db-port ${PrivateDbPort} --zookeeper-host ${PrivateZkHost} --kylin-mode ${PrivaiteKylinMode} --waiting-time ${PrivateWaitingTime} --local-soft ${PrivateLocalCacheSoftAffinity} --spark-master ${PrivateSparkMasterHost}
+              bash ${PrivateKylin4ScriptFileName} --bucket-url ${PrivateBucketPath} --region ${PrivateRegion} --db-host ${PrivateDbHost} --db-password ${PrivateDbPass} --db-user ${PrivateDbUser} --db-port ${PrivateDbPort} --kylin-mode ${PrivaiteKylinMode} --local-soft ${PrivateLocalCacheSoftAffinity} --cluster-num ${PrivateClusterNum}
               echo " Kylin4 is ready ..."
             - PrivateBucketFullPath: !Ref BucketFullPath
               PrivateKylin4ScriptFileName: !Ref Kylin4ScriptFileName
@@ -209,11 +209,9 @@ Resources:
               PrivateDbPass: !Ref DbPassword
               PrivateDbUser: !Ref DbUser
               PrivateDbPort: !Ref DbPort
-              PrivateZkHost: !Ref ZookeepersHost
               PrivaiteKylinMode: !Ref Ec2KylinMode
-              PrivateWaitingTime: !Ref Ec2WaitingTime
               PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
-              PrivateSparkMasterHost: !Ref SparkMasterNodeHost
+              PrivateClusterNum: !Ref ClusterNum
 
 Outputs:
   IdOfInstance:
@@ -234,3 +232,6 @@ Outputs:
   Kylin4SparkMasterHost:
     Description: Spark Master host for Kylin 4
     Value: !Ref SparkMasterNodeHost
+  Kylin4ZookeeperHosts:
+    Description: Zookeeper hosts for Kylin 4
+    Value: !Ref ZookeepersHost

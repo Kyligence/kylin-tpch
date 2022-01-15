@@ -1,12 +1,4 @@
-from enum import Enum
-
-import lightning
-
-
-class ServerMode(Enum):
-    ALL = 'all'
-    JOB = 'job'
-    QUERY = 'query'
+from client import lightning
 
 
 class KylinInstance:
