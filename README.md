@@ -52,7 +52,7 @@ $ ./bin/init.sh
 
 > Note: Follow the information into a python virtual env and get the help messages. 
 
-3. Execute commands to deploy a cluster.
+4. Execute commands to deploy a cluster.
 
 ```she
 $ python ./deploy --type deploy
@@ -77,6 +77,44 @@ $ python ./deploy --type destroy
 ```
 
 
+
+## Quick Start For Multiple Clusters
+
+> Pre-steps is same as Quick Start steps which is from 1 to 4.
+
+1. Modify the config `CLUSTER_INDEXES` for multiple cluster.
+
+   > Note:
+   >
+   > 1. `CLUSTER_INDEXES` means that cluster index is in the range of `CLUSTER_INDEXES`. 
+   > 2. If user create multiple clusters, `default` cluster always be created. If `CLUSTER_INDEXES` is (1, 3), there will be 4 cluster which contains the cluster 1, 2, 3 and `default` will be created if user execute the commands.
+   > 3. Configs for multiple clusters always are same as the `default` cluster to read from `kylin-tpch/kylin_configs.yaml`
+
+2. Copy `kylin.properties.template` for scale clusters, please check the [details](#cluster). 
+
+3. Execute commands to scale a cluster.
+
+   > Note:
+   >
+   > ​	User can deploy a cluster then to scale a other cluster to make the env of `Read-Write Separation Cluster`.
+
+   ```shell
+   python ./deploy --type scale --scale-type up --node-type cluster
+   ```
+
+4. Destroy the clusters.
+
+   > Note:
+   >
+   > ​	Destroy scaled clusters must scale down cluster then continue to execute destroy command.
+
+   ```shell
+   python ./deploy --type scale --scale-type down --node-type cluster
+   ```
+
+   ```she
+   python ./deploy --type destroy
+   ```
 
 ## Prerequisites 
 
