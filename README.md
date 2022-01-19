@@ -55,7 +55,7 @@ $ ./bin/init.sh
 4. Execute commands to deploy a cluster.
 
 ```she
-$ python ./deploy --type deploy
+$ python ./deploy.py --type deploy
 ```
 
 After cluster is ready, you will see the message `Kylin Cluster already start successfully.` in the console. 
@@ -63,7 +63,7 @@ After cluster is ready, you will see the message `Kylin Cluster already start su
 5. Execute commands to list nodes of cluster.
 
 ```she
-$ python ./deploy --type list
+$ python ./deploy.py --type list
 ```
 
 Then you can check the `public ip` of Kylin Node.
@@ -73,7 +73,7 @@ You can visit Kylin web by `http://{kylin public ip}:7070/kylin`.
 6. Destroy the cluster.
 
 ```she
-$ python ./deploy --type destroy
+$ python ./deploy.py --type destroy
 ```
 
 
@@ -99,7 +99,7 @@ $ python ./deploy --type destroy
    > ​	User can deploy a cluster then to scale a other cluster to make the env of `Read-Write Separation Cluster`.
 
    ```shell
-   python ./deploy --type scale --scale-type up --node-type cluster
+   python ./deploy.py --type scale --scale-type up --node-type cluster
    ```
 
 4. Destroy the clusters.
@@ -109,11 +109,11 @@ $ python ./deploy --type destroy
    > ​	Destroy scaled clusters must scale down cluster then continue to execute destroy command.
 
    ```shell
-   python ./deploy --type scale --scale-type down --node-type cluster
+   python ./deploy.py --type scale --scale-type down --node-type cluster
    ```
 
    ```she
-   python ./deploy --type destroy
+   python ./deploy.py --type destroy
    ```
 
 ## Prerequisites 
@@ -377,10 +377,70 @@ User also can customize the params in `kylin-tpch/kylin_configs.yaml` to create 
 1. Current tool already open the port for some services. You can access the service by `public ip` of related EC2 instance.
    1. `SSH`: 22
    2. `Granfana`:  3000
-   3. `Prmetheus`:  9090 ~ 9100
+   3. `Prmetheus`:  9090, 9100
    4. `Kylin`: 7070
    5. `Spark`: 8080. 4040.
 2. More about cloudformation syntax, please check [aws website](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html).
+
+## Monitor
+
+Current tool also support the feature of monitor for cluster.
+
+1. User can execute `python ./deploy.py --type list` to get the `public ip` of `Static Service` .
+2. User can access the `public ip` of `Static Service` and the port is `9090` to access `Prometheus` server.
+3. User can access the `public ip` of `Static Service` and the port is `3000` to access `Granfana` server.
+
+### Quick Start For Prometheus
+
+1. Input a `Metric`, user can get the available metric from the metric exploer.
+
+![prometheus metrics](./images/prometheusmetrics.png)
+
+2. Execute a query to generate a dashboad.
+
+![prometheus query](./images/prometheusquery.png)
+
+3. Add a new panel for a new query.
+
+![new panel](./images/newpanel.png)
+
+More details about `PromQL` for metric exploer, please check [official website](https://prometheus.io/docs/prometheus/latest/querying/).
+
+#### Spark Metric In Prometheus
+
+>  Note:
+>
+> 1. Current tool support to monitor spark metrics, more detail in [Spark Metrics](https://spark.apache.org/docs/3.1.1/monitoring.html#executor-metrics).
+> 2. Spark metrics is start with `metrics` in Prometheus server.
+>
+> ![spark metrics](./images/sparkmetrics.png)
+
+ ### Quick Start For Granfana
+
+1. Login into dashboard with default user and password which are all `admin` at the first time.
+2. Configure the connection to prometheus server.
+
+![granfana datasource](./images/granfanadatasource.png)
+
+![granfana 2](./images/granfana2.png)
+
+![granfana 3](./images/granfana3.png)
+
+> Just config the url with syntax `http://{private ip of static service}:9090` which `private ip of static service` can be from the `python ./deploy.py --type list` command.
+
+3. Add a new panel.
+
+![granfana dashboard](./images/granfanadashboard.png)
+
+4. Add a new panel or other.
+
+![granfana panel](./images/granfanapanel.png)
+
+5. Edit & Apply the panel.
+
+![granfana edit panel](./images/granfanaeditpanel.png)
+
+More details about the usage of Granfana in [official website](https://grafana.com/docs/grafana/latest/).
 
 ## Run
 
@@ -423,13 +483,13 @@ $ python ./deploy.py --type list
 
 #### Advanced
 
-- Scale up or down kylin nodes
+- Scale up or down kylin nodes in default cluster
 
 ```sh
 $ python ./deploy.py --type scale --scale-type up[|down] --node-type kylin
 ```
 
-- Scale up or down spark-worker nodes
+- Scale up or down spark-worker nodes in default cluster
 
 ```sh
 $ python ./deploy.py --type scale --scale-type up[|down] --node-type spark_worker
