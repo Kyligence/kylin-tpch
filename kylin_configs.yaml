@@ -4,26 +4,30 @@
 AWS_REGION: cn-northwest-1
 
 # Note: this role must be created before run deployment
+# Please replace `${IAM_ROLE_NAME}` to a real IAM Role name
 # Required
-IAMRole: &IAM
+IAMRole: &IAM ${IAM_ROLE_NAME}
 
 # Note: this Path must be created before run deployment
 # Example: s3://xxx/kylin
+# Please replace `${S3_URI}` to a real S3 Uri path
 # Required
-S3_FULL_BUCKET_PATH:
+S3_URI: ${S3_URI}
 
 # Security key name must not be null
+# Please replace `${KEY_PAIR}` to a real key Pair name
 # Required
-KeyName: &security_key
+KeyName: &security_key ${KEY_PAIR}
 
 # Security Ingress CIDR_IP must not be null
 #
 # Description:
 #   An inbound rule permits instances to receive traffic from the specified IPv4 or IPv6 CIDR address range,
 #   or from the instances associated with the specified security group.
-#
+# Example: 192.168.1.1/32
+# Please replace `${Cidr Ip}` to a real cidr ip for ingress
 # Required
-CIDR_IP:
+CIDR_IP: ${Cidr Ip}
 
 # ============ AWS Configs End ============
 
@@ -60,9 +64,6 @@ ALWAYS_DESTROY_ALL: false
 ## Open public Ip on Instances
 ASSOSICATED_PUBLIC_IP: &associated_public_ip 'true'
 
-## kylin mode is in [all, query, job]
-KYLIN_MODE: &kylin_mode all
-
 ## Stack Names
 ### Note: if need to change stack names please change it in ../utils.py too.
 VPC_STACK: ec2-or-emr-vpc-stack
@@ -85,13 +86,17 @@ CLUSTER_INDEXES: (1, 1)
 ## Examples: (1, 3) means that cluster will scale up 3 nodes of kylin which nodes number will be 1, 2 and 3.
 ## Now there are 4 kylin nodes which contains the one kylin node of initialization and scaled up nodes(1,2,3).
 ## Specially, if user set range to be (1, 1) that means cluster only scale the one node which node number is 1.
-KYLIN_SCALE_NODES: (1, 1)
+# TODO: fix document
+KYLIN_SCALE_UP_NODES: (1, 3)
+KYLIN_SCALE_DOWN_NODES: (1, 3)
 
 ## The format of spark worker scale nodes range is `Tuple`.
 ## Examples: (1, 3) means that cluster will scale up `3` nodes of spark workers which nodes number will be 1, 2 and 3.
 ## Now there are 6 spark worker nodes which contains the `3` spark worker nodes of initialization and scaled up nodes(1,2,3).
 ## Specially, if user set range to be (1, 1) that means cluster only scale the one node which node number is 1.
-SPARK_WORKER_SCALE_NODES: (1, 1)
+# TODO: fix document
+SPARK_WORKER_SCALE_UP_NODES: (1, 2)
+SPARK_WORKER_SCALE_DOWN_NODES: (1, 2)
 
 ## DB identifier for status check
 DB_IDENTIFIER: &db_instance_id ec2-rds-kylin4
@@ -192,8 +197,6 @@ EC2_KYLIN4_PARAMS:
   SecurityGroupId:
 
   AssociatedPublicIp: *associated_public_ip
-  # Must be in [ all, job, query ]
-  Ec2KylinMode: *kylin_mode
 
   DbPort: *DbPort
   DbUser: *DbUser
@@ -238,8 +241,6 @@ EC2_KYLIN4_SCALE_PARAMS:
   SecurityGroupId:
 
   AssociatedPublicIp: *associated_public_ip
-  # Must be in [ all, job, query ]
-  Ec2KylinMode: *kylin_mode
 
   DbPort: *DbPort
   DbUser: *DbUser

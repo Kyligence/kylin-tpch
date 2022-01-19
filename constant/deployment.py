@@ -16,4 +16,7 @@ class ScaleType(Enum):
 class NodeType(Enum):
     KYLIN = 'kylin'
     SPARK_WORKER = 'spark_worker'
-    CLUSTER = 'cluster'
+
+
+class Cluster(Enum):
+    ALL = 'all'

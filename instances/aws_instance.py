@@ -39,8 +39,14 @@ class AWSInstance:
 
     @property
     def scaled_spark_workers(self) -> Optional[Tuple]:
-        if self.config[Config.SPARK_WORKER_SCALE_NODES.value]:
-            return literal_eval(self.config[Config.SPARK_WORKER_SCALE_NODES.value])
+        if self.config[Config.SPARK_WORKER_SCALE_UP_NODES.value]:
+            return literal_eval(self.config[Config.SPARK_WORKER_SCALE_UP_NODES.value])
+        return ()
+
+    @property
+    def scaled_down_spark_workers(self) -> Optional[Tuple]:
+        if self.config[Config.SPARK_WORKER_SCALE_UP_NODES.value]:
+            return literal_eval(self.config[Config.SPARK_WORKER_SCALE_UP_NODES.value])
         return ()
 
     @property
@@ -55,8 +61,14 @@ class AWSInstance:
 
     @property
     def scaled_kylin_nodes(self) -> Optional[Tuple]:
-        if self.config[Config.KYLIN_SCALE_NODES.value]:
-            return literal_eval(self.config[Config.KYLIN_SCALE_NODES.value])
+        if self.config[Config.KYLIN_SCALE_UP_NODES.value]:
+            return literal_eval(self.config[Config.KYLIN_SCALE_UP_NODES.value])
+        return ()
+
+    @property
+    def scaled_down_kylin_nodes(self) -> Optional[Tuple]:
+        if self.config[Config.KYLIN_SCALE_UP_NODES.value]:
+            return literal_eval(self.config[Config.KYLIN_SCALE_DOWN_NODES.value])
         return ()
 
     @property
@@ -191,11 +203,23 @@ class AWSInstance:
 
     @property
     def s3_path_match(self) -> re.Match:
-        original_path: str = self.config[Params.S3_FULL_BUCKET_PATH.value]
+        original_path: str = self.config[Params.S3_URI.value]
         match = re.match(pattern=r'^s3://([^/]+)/(.*?([^/]+)/?)$', string=original_path)
         if not match:
             raise Exception(f"Invalid S3 bucket path: {original_path}, please check.")
         return match
+
+    @property
+    def is_valid_scaled_range(self) -> bool:
+        return self.is_valid_scaled_range_of_kylin_nodes and self.is_valid_scaled_range_of_spark_worker_nodes
+
+    @property
+    def is_valid_scaled_range_of_kylin_nodes(self) -> bool:
+        return set(self.scaled_down_kylin_nodes).issubset(self.scaled_kylin_nodes)
+
+    @property
+    def is_valid_scaled_range_of_spark_worker_nodes(self) -> bool:
+        return set(self.scaled_down_spark_workers).issubset(self.scaled_spark_workers)
 
     @property
     def bucket_full_path(self) -> str:
@@ -760,6 +784,7 @@ class AWSInstance:
         params[Params.ZOOKEEPER_HOSTS.value] = self.get_zookeepers_host_by_zk_stack_name(zk_stack)
         params[Params.DB_HOST.value] = self.get_db_host()
         params[Params.CLUSTER_NUM.value] = str(cluster_num)
+        params[Params.IS_SCALED.value] = 'true'
 
         resp = self.create_stack(
             stack_name=stack_name,
@@ -1012,7 +1037,7 @@ class AWSInstance:
         # create kylin
         self.create_kylin_stack_by_cluster(cluster_num)
 
-    def scale_down_cluster(self, cluster_num: int) -> None:
+    def destroy_cluster(self, cluster_num: int) -> None:
         scaled_kylin_stack_name = self.generate_stack_of_scaled_cluster_for_kylin(cluster_num)
         self.terminate_stack_by_name(scaled_kylin_stack_name)
 
@@ -1140,22 +1165,35 @@ class AWSInstance:
         commands = [Commands.PROMETHEUS_CFG_COMMAND.value.format(node=node, host=host) for node, host in params.items()]
         return commands
 
-    def after_scale_prometheus_params_map_of_kylin(self, cluster_num: int = None) -> Dict:
+    def after_scale_prometheus_params_map_of_kylin(self, cluster_num: int = None, is_scale_down: bool = False) -> Dict:
         kylin_ips = self.get_scaled_node_private_ips(cluster_num)[0]
+
+        if is_scale_down:
+            nodes = Utils.generate_nodes(self.scaled_down_kylin_nodes)
+        else:
+            nodes = Utils.generate_nodes(self.scaled_kylin_nodes)
 
         kylin_node_keys = [Params.KYLIN_SCALE_NODE_NAME_IN_CLUSTER.value.format(
             num=i, cluster=cluster_num if cluster_num else 'default')
-            for i in Utils.generate_nodes(self.scaled_kylin_nodes)]
+            for i in nodes]
 
         kylin_params_map = dict(zip(kylin_node_keys, kylin_ips))
         return kylin_params_map
 
-    def after_scale_prometheus_params_map_of_spark_worker(self, cluster_num: int = None) -> Dict:
+    def after_scale_prometheus_params_map_of_spark_worker(
+            self,
+            cluster_num: int = None,
+            is_scale_down: bool = False) -> Dict:
         spark_workers_ips = self.get_scaled_node_private_ips(cluster_num)[1]
+
+        if is_scale_down:
+            nodes = Utils.generate_nodes(self.scaled_down_spark_workers)
+        else:
+            nodes = Utils.generate_nodes(self.scaled_spark_workers)
 
         spark_workers_keys = [Params.SPARK_SCALE_WORKER_NAME_IN_CLUSTER.value.format(
             num=i, cluster=cluster_num if cluster_num else 'default')
-            for i in Utils.generate_nodes(self.scaled_spark_workers)]
+            for i in nodes]
 
         spark_workers_params_map = dict(zip(spark_workers_keys, spark_workers_ips))
 
@@ -1165,7 +1203,16 @@ class AWSInstance:
         nodes_of_cluster_params_map = self.prometheus_param_map_of_scaled_cluster(cluster_nums)
         return nodes_of_cluster_params_map
 
+    def after_launch_or_destroy_prometheus_params_map_of_clusters(self, cluster_nums: List[int]) -> Dict:
+        nodes_of_cluster_params_map = self.prometheus_param_map_of_launched_clusters(cluster_nums)
+        return nodes_of_cluster_params_map
+
     def after_scale_prometheus_params_map_of_cluster_for_spark_metric(self, cluster_nums: List[int]) -> (Dict, Dict):
+        kylin_params_map = self.prometheus_spark_metric_params_of_kylin_in_cluster(cluster_nums)
+        spark_params_map = self.prometheus_spark_metric_params_of_spark_in_cluster(cluster_nums)
+        return kylin_params_map, spark_params_map
+
+    def after_launch_or_destroy_prometheus_params_of_clusters_for_spark_metric(self, cluster_nums: List[int]) -> (Dict, Dict):
         kylin_params_map = self.prometheus_spark_metric_params_of_kylin_in_cluster(cluster_nums)
         spark_params_map = self.prometheus_spark_metric_params_of_spark_in_cluster(cluster_nums)
         return kylin_params_map, spark_params_map
@@ -1198,8 +1245,19 @@ class AWSInstance:
         params_map = self.after_scale_prometheus_params_map_of_cluster(cluster_nums)
         return self._check_prometheus_not_exists_nodes(params_map)
 
+    def check_prometheus_config_after_launch_clusters(self, cluster_nums: List[int]) -> Dict:
+        params_map = self.after_launch_or_destroy_prometheus_params_map_of_clusters(cluster_nums=cluster_nums)
+        return self._check_prometheus_not_exists_nodes(params_map)
+
     def check_spark_metric_config_after_scale_cluster(self, cluster_nums: List[int]) -> (Dict, Dict):
         kylin_params, spark_params = self.after_scale_prometheus_params_map_of_cluster_for_spark_metric(cluster_nums)
+        not_exists_kylin_nodes: Dict = self._check_prometheus_not_exists_nodes(kylin_params)
+        not_exists_spark_nodes: Dict = self._check_prometheus_not_exists_nodes(spark_params)
+        return not_exists_kylin_nodes, not_exists_spark_nodes
+
+    def check_spark_metric_config_after_launch_clusters(self, cluster_nums: List[int]) -> (Dict, Dict):
+        kylin_params, spark_params = self.after_launch_or_destroy_prometheus_params_of_clusters_for_spark_metric(
+            cluster_nums)
         not_exists_kylin_nodes: Dict = self._check_prometheus_not_exists_nodes(kylin_params)
         not_exists_spark_nodes: Dict = self._check_prometheus_not_exists_nodes(spark_params)
         return not_exists_kylin_nodes, not_exists_spark_nodes
@@ -1210,11 +1268,18 @@ class AWSInstance:
         exists_spark_nodes: Dict = self._check_prometheus_exists_nodes(spark_params)
         return exists_kylin_nodes, exists_spark_nodes
 
+    def check_spark_metric_config_after_destroy_clusters(self, cluster_nums: List[int]) -> (Dict, Dict):
+        kylin_params, spark_params = self.after_launch_or_destroy_prometheus_params_of_clusters_for_spark_metric(
+            cluster_nums)
+        exists_kylin_nodes: Dict = self._check_prometheus_exists_nodes(kylin_params)
+        exists_spark_nodes: Dict = self._check_prometheus_exists_nodes(spark_params)
+        return exists_kylin_nodes, exists_spark_nodes
+
     def check_prometheus_config_after_scale_down(self, node_type: str, cluster_num: int = None) -> Dict:
         if node_type == NodeType.KYLIN.value:
-            workers_param_map = self.after_scale_prometheus_params_map_of_kylin(cluster_num)
+            workers_param_map = self.after_scale_prometheus_params_map_of_kylin(cluster_num, is_scale_down=True)
         else:
-            workers_param_map = self.after_scale_prometheus_params_map_of_spark_worker(cluster_num)
+            workers_param_map = self.after_scale_prometheus_params_map_of_spark_worker(cluster_num, is_scale_down=True)
 
         return self._check_prometheus_exists_nodes(params=workers_param_map)
 
@@ -1244,6 +1309,13 @@ class AWSInstance:
         params_map = self.after_scale_prometheus_params_map_of_cluster(cluster_nums)
         return self._check_prometheus_exists_nodes(params_map)
 
+    def check_prometheus_config_after_destroy_clusters(self, cluster_nums: List[int]) -> Dict:
+        params_map = self.after_launch_or_destroy_prometheus_params_map_of_clusters(cluster_nums)
+        return self._check_prometheus_exists_nodes(params_map)
+
+    def refresh_prometheus_config_after_launch_clusters(self, expected_nodes: Dict) -> None:
+        self.refresh_prometheus_config_after_scale_up(expected_nodes=expected_nodes)
+
     def refresh_prometheus_config_after_scale_up(self, expected_nodes: Dict) -> None:
         commands = self.refresh_prometheus_commands_after_scale(expected_nodes)
         for command in commands:
@@ -1259,14 +1331,8 @@ class AWSInstance:
         for command in commands:
             self.exec_script_instance_and_return(name_or_id=self.instance_id_of_static_services, script=command)
 
-    # TODO: remove this
-    def refresh_prometheus_spark_metrics_in_cluster_after_scale_up(self, expected_nodes: Dict) -> None:
-        commands = []
-        commands.extend(self.refresh_prometheus_spark_application_in_cluster_after_scale(expected_nodes))
-        commands.extend(self.refresh_prometheus_spark_master_in_cluster_after_scale(expected_nodes))
-        commands.extend(self.refresh_prometheus_spark_executor_in_cluster_after_scale(expected_nodes))
-        for command in commands:
-            self.exec_script_instance_and_return(name_or_id=self.instance_id_of_static_services, script=command)
+    def refresh_prometheus_config_after_destroy_clusters(self, exists_nodes: Dict) -> None:
+        self.refresh_prometheus_config_after_scale_down(exists_nodes)
 
     def refresh_prometheus_config_after_scale_down(self, exists_nodes: Dict) -> None:
         commands = [Commands.PROMETHEUS_DELETE_CFG_COMMAND.value.format(node=worker) for worker in exists_nodes.keys()]
@@ -1282,18 +1348,6 @@ class AWSInstance:
     # ============ Prometheus Services End ============
 
     # ============ Utils Services Start ============
-    def is_scaled_stacks_terminated(self) -> bool:
-        for stack in self.scaled_spark_workers_stacks:
-            if not self.is_stack_deleted_complete(stack):
-                logger.warning(f'Scaled Spark Workers Stack:{stack} was not terminated, please check.')
-                return False
-        for stack in self.scaled_kylin_stacks:
-            if not self.is_stack_deleted_complete(stack):
-                logger.warning(f'Scaled kylin Stack:{stack} was not terminated, please check.')
-                return False
-
-        return True
-
     def is_scaled_stacks_in_clusters_terminated(self, cluster_nums: List) -> bool:
         for num in cluster_nums:
             for stack in self.scaled_target_spark_workers_stacks():
@@ -1481,6 +1535,38 @@ class AWSInstance:
 
         return params_map
 
+    def prometheus_param_map_of_launched_clusters(self, cluster_nums: List[int]) -> Dict:
+        params_map: Dict = {}
+        for num in cluster_nums:
+            param: Dict = self.prometheus_param_map_of_launched_cluster(cluster_num=num)
+            params_map.update(param)
+
+        return params_map
+
+    def prometheus_param_map_of_launched_cluster(self, cluster_num: int) -> Dict:
+        params_map: Dict = {}
+        # kylin stack
+        kylin_map = self.kylin_param_map_by_cluster_num(num=cluster_num)
+        if kylin_map:
+            params_map.update(kylin_map)
+
+        # spark master
+        spark_master_map = self.spark_master_param_map_by_num(num=cluster_num)
+        if spark_master_map:
+            params_map.update(spark_master_map)
+
+        # zookeeper
+        zks_map = self.zks_param_map_by_num(num=cluster_num)
+        if zks_map:
+            params_map.update(zks_map)
+
+        # spark worker
+        spark_slaves_map = self.spark_worker_param_map(num=cluster_num)
+        if not spark_slaves_map:
+            params_map.update(spark_slaves_map)
+
+        return params_map
+
     def prometheus_spark_metric_params_of_kylin_in_cluster(self, cluster_nums: List[int]) -> Dict:
         params_map: Dict = {}
         for num in cluster_nums:
@@ -1578,6 +1664,7 @@ class AWSInstance:
             scaled_kylin_stacks = self.scaled_target_kylin_stacks(cluster_num)
             scaled_spark_worker_stacks = self.scaled_target_spark_workers_stacks(cluster_num)
         else:
+            # Always get the full scale nodes in the `UP` range
             scaled_kylin_stacks = self.scaled_kylin_stacks
             scaled_spark_worker_stacks = self.scaled_spark_workers_stacks
 

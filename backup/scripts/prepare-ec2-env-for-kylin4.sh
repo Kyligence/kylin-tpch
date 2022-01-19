@@ -78,14 +78,13 @@ while [[ $# != 0 ]]; do
     DATABASE_USER=$2
   elif [[ $1 == '--db-port' ]]; then
     DATABASE_PORT=$2
-  elif [[ $1 == "--kylin-mode" ]]; then
-    # kylin mode in [ 'all', 'query', 'job' ]
-    KYLIN_MODE=$2
   elif [[ $1 == "--local-soft" ]]; then
     LOCAL_CACHE_SOFT_AFFINITY=$2
   elif [[ $1 == '--cluster-num' ]]; then
     # default value is 'default', and cluster num is from 1 to positive infinity.
     CLUSTER_NUM=$2
+  elif [[ $1 == '--is-scaled' ]]; then
+    IS_SCALED=$2
   else
     help
   fi
@@ -115,13 +114,13 @@ else
   # Prepared the local cache dir for local cache + soft affinity
 
   if [[ ! -d ${LOCAL_CACHE_DIR} ]]; then
-      sudo mkdir -p ${LOCAL_CACHE_DIR}
-      sudo chmod -R 777 ${LOCAL_CACHE_DIR}
+    sudo mkdir -p ${LOCAL_CACHE_DIR}
+    sudo chmod -R 777 ${LOCAL_CACHE_DIR}
   fi
 
   if [[ ! -d ${LOCAL_CACHE_DIR}/alluxio-cache-driver ]]; then
-      sudo mkdir -p ${LOCAL_CACHE_DIR}/alluxio-cache-driver
-      sudo chmod -R 777 ${LOCAL_CACHE_DIR}/alluxio-cache-driver
+    sudo mkdir -p ${LOCAL_CACHE_DIR}/alluxio-cache-driver
+    sudo chmod -R 777 ${LOCAL_CACHE_DIR}/alluxio-cache-driver
   fi
 
 fi
@@ -474,7 +473,7 @@ function init_spark() {
   fi
 
   #Support local cache + soft affinity
-  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]]; then
+  if [[ ${LOCAL_CACHE_SOFT_AFFINITY} == "true" ]]; then
     if [[ ! -f $SPARK_HOME/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar ]]; then
       logging info "Downloading kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar to $SPARK_HOME/jars/ ..."
       aws s3 cp ${PATH_TO_BUCKET}/jars/kylin-soft-affinity-cache-4.0.0-SNAPSHOT.jar $SPARK_HOME/jars/ --region ${CURRENT_REGION}
@@ -487,7 +486,7 @@ function init_spark() {
   fi
 
   # Support prometheus metrics
-  cat <<EOF > ${SPARK_HOME}/conf/metrics.properties
+  cat <<EOF >${SPARK_HOME}/conf/metrics.properties
 *.sink.prometheusServlet.class=org.apache.spark.metrics.sink.PrometheusServlet
 *.sink.prometheusServlet.path=/metrics/prometheus
 master.sink.prometheusServlet.path=/metrics/master/prometheus
@@ -569,7 +568,7 @@ function init_kylin() {
   logging info "Overwrite kylin.properties from ${PATH_TO_BUCKET}/properties/${CLUSTER_NUM}/kylin.properties to ${KYLIN_HOME}/conf/kylin.properties in region ${CURRENT_REGION}."
   aws s3 cp ${PATH_TO_BUCKET}/properties/${CLUSTER_NUM}/kylin.properties ${KYLIN_HOME}/conf/kylin.properties --region ${CURRENT_REGION}
 
-  if [[ $LOCAL_CACHE_SOFT_AFFINITY == "true" ]] && ( [[ ${KYLIN_MODE} == "all" ]] || [[ ${KYLIN_MODE} == "query" ]] ); then
+  if [[ ${LOCAL_CACHE_SOFT_AFFINITY} == "true" ]]; then
     cat <<EOF >> ${KYLIN_HOME}/conf/kylin.properties
 kylin.query.spark-conf.spark.executor.extraJavaOptions=-Dhdp.version=current -Dlog4j.configuration=spark-executor-log4j.properties -Dlog4j.debug -Dkylin.hdfs.working.dir=\${kylin.env.hdfs-working-dir} -Dkylin.metadata.identifier=\${kylin.metadata.url.identifier} -Dkylin.spark.category=sparder -Dkylin.spark.identifier={{APP_ID}} -Dalluxio.user.client.cache.dir=${LOCAL_CACHE_DIR}/alluxio-cache-{{APP_ID}}-{{EXECUTOR_ID}}
 
@@ -603,7 +602,7 @@ kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.page.size=1MB
 kylin.query.spark-conf.spark.hadoop.alluxio.user.client.cache.local.store.file.buckets=1000
 kylin.query.spark-conf.spark.hadoop.alluxio.user.update.file.accesstime.disabled=true
 EOF
-    fi
+  fi
 
   logging info "Kylin inited ..."
   touch ${HOME_DIR}/.inited_kylin
@@ -635,11 +634,15 @@ function start_kylin() {
 }
 
 function sample_for_kylin() {
-  ${KYLIN_HOME}/bin/sample.sh
-  if [[ $? -ne 0 ]]; then
-    logging error "Sample for kylin is failed, please check ..."
+  if [[ ${IS_SCALED} == 'false' ]]; then
+      ${KYLIN_HOME}/bin/sample.sh
+      if [[ $? -ne 0 ]]; then
+        logging error "Sample for kylin is failed, please check ..."
+      else
+        logging info "Sample for kylin is successful, enjoy it ..."
+      fi
   else
-    logging info "Sample for kylin is successful, enjoy it ..."
+    logging info "It is unnecessary to sample data in scaled mode. "
   fi
 }
 

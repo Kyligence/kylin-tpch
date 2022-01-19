@@ -5,10 +5,11 @@ class Params(Enum):
     # global params
     ASSOSICATED_PUBLIC_IP = 'ASSOSICATED_PUBLIC_IP'
     ALWAYS_DESTROY_ALL = 'ALWAYS_DESTROY_ALL'
-    S3_FULL_BUCKET_PATH = 'S3_FULL_BUCKET_PATH'
+    S3_URI = 'S3_URI'
     INSTANCE_ID = 'IdOfInstance'
     CLUSTER_NUM = 'ClusterNum'
     CIDR_IP = 'CidrIp'
+    IS_SCALED = 'IsScaled'
 
     # bucket path of stack
     BUCKET_FULL_PATH = 'BucketFullPath'

@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 from typing import List, Tuple, Generator, Dict
 
 import requests
@@ -9,7 +10,8 @@ from constant.path import (
     TARS_PATH,
     JARS_PATH,
     TEMPLATES_PATH,
-    KYLIN_PROPERTIES_TEMPLATE_DIR,
+    KYLIN_PROPERTIES_TEMPLATE_DIR, KYLIN_PROPERTIES_DIR, RENDERED_FILE, PROPERTIES_TEMPLATE_DIR,
+    TEMPLATE_OF_KYLIN_PROPERTIES,
 )
 
 logger = logging.getLogger(__name__)
@@ -100,7 +102,7 @@ class Utils:
         search_path = KYLIN_PROPERTIES_TEMPLATE_DIR.format(cluster_num=cluster_num if cluster_num else 'default')
 
         dest_path = os.path.join(search_path, 'kylin.properties')
-        rendered_file = os.path.join(search_path, '.rendered')
+        rendered_file = os.path.join(search_path, RENDERED_FILE)
         if os.path.exists(rendered_file):
             logger.info(f'{dest_path} already rendered. Skip render it again.')
             return
@@ -121,3 +123,49 @@ class Utils:
         with open(rendered_file, 'a'):
             os.utime(rendered_file, None)
         logger.info(f'Current {dest_path} rendered.')
+
+    @staticmethod
+    def refresh_kylin_properties(properties_template: str = 'kylin.properties') -> None:
+        Utils.refresh_kylin_properties_in_clusters()
+        Utils.refresh_kylin_properties_in_default(properties_template=properties_template)
+
+    @staticmethod
+    def refresh_kylin_properties_in_clusters(cluster_nums: List[int] = None) -> None:
+        # delete useless kylin.properties
+        kylin_properties_paths = os.listdir(KYLIN_PROPERTIES_DIR)
+        for path in kylin_properties_paths:
+            if path in ['default', 'templates']:
+                continue
+
+            if not cluster_nums and path not in cluster_nums:
+                continue
+
+            absolute_path = os.path.join(KYLIN_PROPERTIES_DIR, path)
+            if not path.isdigit():
+                logger.warning(f'Illegal path of {absolute_path}, please check.')
+                continue
+            logger.info(f'Start to delete useless path: {absolute_path}.')
+            shutil.rmtree(absolute_path, ignore_errors=True)
+            logger.info(f'Delete useless path: {absolute_path} done.')
+
+    @staticmethod
+    def refresh_kylin_properties_in_default(properties_template: str = 'kylin.properties') -> None:
+        # refresh default kylin.properties
+        default_path = KYLIN_PROPERTIES_TEMPLATE_DIR.format(cluster_num='default')
+        mark_file_path = os.path.join(default_path, RENDERED_FILE)
+        if os.path.exists(mark_file_path):
+            logger.info(f'Removing the render file.')
+            os.remove(mark_file_path)
+            logger.info(f'Removed the render file.')
+
+        kylin_properties = os.path.join(default_path, properties_template)
+        if os.path.exists(kylin_properties):
+            logger.info(f'Removing the render file.')
+            os.remove(kylin_properties)
+            logger.info(f'Removed the render file.')
+
+        # copy template & rename it to kylin.properties
+        template = os.path.join(PROPERTIES_TEMPLATE_DIR, TEMPLATE_OF_KYLIN_PROPERTIES)
+        logger.info(f'Copy template from {template} to {kylin_properties}.')
+        shutil.copy(template, kylin_properties)
+        logger.info(f'Copy done.')

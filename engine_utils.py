@@ -60,13 +60,17 @@ class EngineUtils:
         zookeeper = 'prepare-ec2-env-for-zk.sh'
         return [kylin, spark_master, spark_slave, static_services, zookeeper]
 
-    def launch_aws_kylin(self):
+    def launch_default_cluster(self):
         cloud_addr = self.get_kylin_address()
         # check kylin status
         KylinUtils.is_kylin_accessible(cloud_addr)
 
-    def destroy_aws_kylin(self):
-        self.aws.destroy_aws_cloud()
+    def destroy_default_cluster(self):
+        # Before destroy default cluster, scale down all the scaled nodes
+        self.scale_nodes(scale_type=ScaleType.DOWN.value, node_type=NodeType.KYLIN.value)
+        self.scale_nodes(scale_type=ScaleType.DOWN.value, node_type=NodeType.SPARK_WORKER.value)
+
+        self.aws.destroy_default_cluster()
 
     def alive_nodes(self):
         self.aws.alive_nodes()
@@ -86,23 +90,28 @@ class EngineUtils:
 
         self.aws.restart_prometheus_server()
 
-    def scale_nodes_in_cluster(self, scale_type: str, node_type: str, cluster_num: int) -> None:
+    def scale_nodes_in_cluster(
+            self,
+            scale_type: str,
+            node_type: str,
+            cluster_num: int,
+            is_destroy: bool = False) -> None:
         logger.info(f"Current scaling {scale_type} {node_type} nodes "
                     f"in cluster {cluster_num if cluster_num else 'default'}.")
         assert self.is_target_cluster_ready(cluster_num) is True, 'Cluster nodes must be ready.'
         self.validate_scale_type(scale_type)
 
-        # specify upload kylin.properties for scaled kylin node in target cluster
-        if node_type == NodeType.KYLIN.value:
-            self.aws.init_kylin_properties(cluster_num)
-            self.upload_kylin_properties(cluster_num)
-
         if scale_type == ScaleType.UP.value:
-            self.aws.scale_up(node_type=node_type, cluster_num=cluster_num)
+            # specify upload kylin.properties for scaled kylin node in target cluster
+            if node_type == NodeType.KYLIN.value:
+                self.aws.init_kylin_properties(cluster_num)
+                self.upload_kylin_properties(cluster_num)
+
+            self.aws.scale_up(node_type=node_type, cluster_num=cluster_num, is_destroy=is_destroy)
             self.aws.after_scale_up(node_type=node_type, cluster_num=cluster_num)
         else:
             self.aws.after_scale_down(node_type=node_type, cluster_num=cluster_num)
-            self.aws.scale_down(node_type=node_type, cluster_num=cluster_num)
+            self.aws.scale_down(node_type=node_type, cluster_num=cluster_num, is_destroy=is_destroy)
 
         self.aws.restart_prometheus_server()
 
@@ -117,6 +126,49 @@ class EngineUtils:
             self.aws.after_scale_down_cluster()
             self.aws.scale_down_cluster()
 
+        self.aws.restart_prometheus_server()
+
+    def prepare_for_cluster(self) -> None:
+        # create vpc, rds and monitor node for whole cluster
+        if not self.is_prepared_for_scale_cluster():
+            self.aws.prepare_for_whole_cluster()
+
+    def launch_all_cluster(self) -> None:
+        self.aws.launch_clusters()
+        self.aws.after_launch_clusters()
+        self.aws.restart_prometheus_server()
+
+    def launch_cluster(self, cluster_num: int) -> None:
+        self.aws.launch_clusters(cluster_nums=[cluster_num])
+        self.aws.after_launch_clusters(cluster_nums=[cluster_num])
+        self.aws.restart_prometheus_server()
+
+    def destroy_all_cluster(self) -> None:
+        # Before destroy all nodes, scale down the nodes in the cluster
+        cluster_nums: List[int] = self.aws.generate_scaled_cluster_nums()
+        for num in cluster_nums:
+            self.scale_nodes_in_cluster(
+                scale_type=ScaleType.DOWN.value,
+                node_type=NodeType.KYLIN.value,
+                cluster_num=num, is_destroy=True)
+            self.scale_nodes_in_cluster(
+                scale_type=ScaleType.DOWN.value,
+                node_type=NodeType.SPARK_WORKER.value,
+                cluster_num=num, is_destroy=True)
+
+        self.aws.after_destroy_clusters(cluster_nums=cluster_nums)
+        self.aws.destroy_clusters(cluster_nums=cluster_nums)
+        self.aws.restart_prometheus_server()
+
+    def destroy_cluster(self, cluster_num: int) -> None:
+        self.scale_nodes_in_cluster(
+            scale_type=ScaleType.DOWN.value,
+            node_type=NodeType.KYLIN.value,
+            cluster_num=cluster_num,
+            is_destroy=True)
+
+        self.aws.after_destroy_clusters(cluster_nums=[cluster_num])
+        self.aws.destroy_clusters(cluster_nums=[cluster_num])
         self.aws.restart_prometheus_server()
 
     def is_cluster_ready(self) -> bool:
@@ -178,7 +230,28 @@ class EngineUtils:
     def validate_scale_type(self, scale_type: str) -> None:
         self.aws.validate_scale_type(scale_type=scale_type)
 
+    def validate_scale_range(self) -> None:
+        self.aws.validate_scale_range()
+
     def init_kylin_properties(self, cluster_num: int = None) -> None:
         logger.info(f"Start to init kylin properties for cluster {cluster_num if cluster_num else 'default'}.")
         self.aws.init_kylin_properties(cluster_num)
         logger.info(f"Inited kylin properties for cluster {cluster_num if cluster_num else 'default'}.")
+
+    @staticmethod
+    def refresh_kylin_properties() -> None:
+        logger.info('Start to refresh kylin.poperties in `kylin-tpch/properties/default`.')
+        Utils.refresh_kylin_properties()
+        logger.info('Refresh kylin.poperties in `kylin-tpch/properties/default` successfully.')
+
+    @staticmethod
+    def refresh_kylin_properties_in_clusters(cluster_nums: List) -> None:
+        logger.info('Start to refresh kylin.poperties.')
+        Utils.refresh_kylin_properties_in_clusters(cluster_nums=cluster_nums)
+        logger.info('Refresh kylin.poperties successfully.')
+
+    @staticmethod
+    def refresh_kylin_properties_in_default() -> None:
+        logger.info('Start to refresh kylin.poperties.')
+        Utils.refresh_kylin_properties_in_default()
+        logger.info('Refresh kylin.poperties successfully.')

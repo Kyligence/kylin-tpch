@@ -24,13 +24,15 @@ When cluster was created, services and nodes will like below:
 
 1. Initialize aws account credential on local mac, please check [details](#localaws).
    
-1. Modify the `kylin-tpch/kylin_config.yml`.
+2. Download the source code: `git clone https://github.com/Kyligence/kylin-tpch.git && cd kylin-tpch && git checkout deploy-kylin-on-aws `.
+   
+3. Modify the `kylin-tpch/kylin_config.yml`.
    
    1. Set the `AWS_REGION`.
    
    2. Set the `IAMRole`,please check [details](#IAM).
    
-   3. Set the `S3_FULL_BUCKET_PATH`, please check [details](#S3).
+   3. Set the `S3_URI`, please check [details](#S3).
    
    4. Set the `KeyName`,please check [details](#keypair).
    
@@ -42,7 +44,7 @@ When cluster was created, services and nodes will like below:
       >
       > 2. In one word, it will let your mac which ip is in the `CIDR_IP` to access instances.
    
-3. Init local env.
+4. Init local env.
 
 ```She
 $ cd $KYLIN_TPCH_HOME
@@ -52,7 +54,7 @@ $ ./bin/init.sh
 
 > Note: Follow the information into a python virtual env and get the help messages. 
 
-4. Execute commands to deploy a cluster.
+5. Execute commands to deploy a cluster.
 
 ```she
 $ python ./deploy.py --type deploy
@@ -60,7 +62,7 @@ $ python ./deploy.py --type deploy
 
 After cluster is ready, you will see the message `Kylin Cluster already start successfully.` in the console. 
 
-5. Execute commands to list nodes of cluster.
+6. Execute commands to list nodes of cluster.
 
 ```she
 $ python ./deploy.py --type list
@@ -70,7 +72,7 @@ Then you can check the `public ip` of Kylin Node.
 
 You can visit Kylin web by `http://{kylin public ip}:7070/kylin`.
 
-6. Destroy the cluster.
+7. Destroy the cluster.
 
 ```she
 $ python ./deploy.py --type destroy
@@ -80,7 +82,7 @@ $ python ./deploy.py --type destroy
 
 ## Quick Start For Multiple Clusters
 
-> Pre-steps is same as Quick Start steps which is from 1 to 4.
+> Pre-steps is same as Quick Start steps which is from 1 to 5.
 
 1. Modify the config `CLUSTER_INDEXES` for multiple cluster.
 
@@ -311,7 +313,7 @@ commands:
 
 - `AWS_REGION`: Current region for EC2 instances.
 - `IAMRole`: IAM role which has the access to aws authority. This parameter will be set to created **name** of IAM role.
-- `S3_FULL_BUCKET_PATH`: the prefix path of storing `jars/scripts/tar`. As example, this parameter will be set to `s3://.../kylin4-aws-test`.
+- `S3_URI`: the prefix path of storing `jars/scripts/tar`. As example, this parameter will be set to `s3://.../kylin4-aws-test`.
 - `KeyName`: Security key name is a set of security credentials that you use to prove your identity when connecting to an instance. This parameter will be set to created **name** of  `key pair` .
 - `CIDR_IP`:  An inbound rule permits instances to receive traffic from the specified IPv4 or IPv6 CIDR address range, or from the instances associated with the specified security group.
 - `DB_IDENTIFIER`: this param should be only one in the `RDS -> Databases` . And it will be the name of created RDS database.
@@ -352,8 +354,8 @@ There are `9` modules params for tools.  Introductions as below:
 - EC2_SPARK_MASTER_PARAMS: this params of module are for creating a Spark Master node.
 - EC2_KYLIN4_PARAMS: this params of module are for creating a Kylin4.
 - EC2_SPARK_WORKER_PARAMS: this params of module are for creating **Spark Workers**, default is **3** spark workers.
-- EC2_KYLIN4_SCALE_PARAMS: this params of module are for scaling **Kylin4 nodes**, **Kylin4 nodes range** is related to `KYLIN_SCALE_NODES`.
-- EC2_SPARK_SCALE_SLAVE_PARAMS: this params of module are for scaling **Spark workers**, **Spark Workers range** is related to `SPARK_WORKER_SCALE_NODES`.
+- EC2_KYLIN4_SCALE_PARAMS: this params of module are for scaling **Kylin4 nodes**, **Kylin4 nodes range** is related to `KYLIN_SCALE_UP_NODES`.
+- EC2_SPARK_SCALE_SLAVE_PARAMS: this params of module are for scaling **Spark workers**, **Spark Workers range** is related to `SPARK_WORKER_SCALE_UP_NODES`.
 
 
 

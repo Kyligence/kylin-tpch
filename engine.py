@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Union, List
 
 import yaml
 
@@ -23,14 +24,14 @@ class Engine:
         self.server_mode = None
         self.engine_utils = EngineUtils(self.config)
 
-    def launch_cluster(self):
+    def launch_default_cluster(self):
         logger.info('Ec2: first launch Instances And Kylin nodes.')
-        self.engine_utils.launch_aws_kylin()
+        self.engine_utils.launch_default_cluster()
         logger.info('Kylin Cluster already start successfully.')
 
-    def destroy_cluster(self):
-        logger.info('Ec2: destroy useless nodes.')
-        self.engine_utils.destroy_aws_kylin()
+    def destroy_default_cluster(self):
+        logger.info('Ec2: destroy default useless nodes.')
+        self.engine_utils.destroy_default_cluster()
         logger.info('Ec2: destroy useless nodes successfully.')
 
     def list_alive_nodes(self) -> None:
@@ -39,6 +40,8 @@ class Engine:
         logger.info('Ec2: list alive nodes successfully.')
 
     def scale_nodes(self, scale_type: str, node_type: str, cluster_num: int = None) -> None:
+        self.engine_utils.validate_scale_range()
+
         if cluster_num:
             self.engine_utils.scale_nodes_in_cluster(
                 scale_type=scale_type,
@@ -58,6 +61,26 @@ class Engine:
         self.engine_utils.scale_cluster(scale_type=scale_type)
         logger.info(f'Scaled {scale_type} cluster nodes successfully.')
 
+    def launch_all_clusters(self) -> None:
+        logger.info(f'Current launch all clusters.')
+        self.engine_utils.launch_all_cluster()
+        logger.info(f'Current launch all clusters successfully.')
+
+    def launch_cluster(self, cluster_num: int) -> None:
+        logger.info(f'Current launch launch cluster {cluster_num}.')
+        self.engine_utils.launch_cluster(cluster_num=cluster_num)
+        logger.info(f'Current launch cluster {cluster_num} successfully.')
+
+    def destroy_all_cluster(self) -> None:
+        logger.info(f'Current destroy all scaled cluster nodes.')
+        self.engine_utils.destroy_all_cluster()
+        logger.info(f'Current destroy all scaled cluster nodes.')
+
+    def destroy_cluster(self, cluster_num: int) -> None:
+        logger.info(f'Current destroy launch cluster {cluster_num}.')
+        self.engine_utils.destroy_cluster(cluster_num=cluster_num)
+        logger.info(f'Current destroy cluster {cluster_num} successfully.')
+
     def is_inited_env(self) -> bool:
         try:
             self.engine_utils.check_needed_files()
@@ -76,3 +99,14 @@ class Engine:
         self.engine_utils.upload_needed_files()
         # check again
         assert self.is_inited_env()
+        # create vpc, rds and monitor node for whole cluster
+        self.engine_utils.prepare_for_cluster()
+
+    def refresh_kylin_properties(self) -> None:
+        self.engine_utils.refresh_kylin_properties()
+
+    def refresh_kylin_properties_in_clusters(self, cluster_nums: List[int]) -> None:
+        self.engine_utils.refresh_kylin_properties_in_clusters(cluster_nums)
+
+    def refresh_kylin_properties_in_default(self) -> None:
+        self.engine_utils.refresh_kylin_properties_in_default()

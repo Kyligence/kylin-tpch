@@ -19,14 +19,6 @@ Parameters:
   ZookeepersHost:
     Type: String
     Description: Must be created at pre-step
-  Ec2KylinMode:
-    Type: String
-    Description: Kylin mode for cluster, default is all, values in [all, query, job]
-    Default: all
-    AllowedValues:
-      - all
-      - query
-      - job
   SparkMasterNodeHost:
     Type: String
     Description: Spark Master host for kylin 4
@@ -49,6 +41,13 @@ Parameters:
   ClusterNum:
     Type: String
     Default: default
+
+  IsScaled:
+    Type: String
+    Default: false
+    AllowedValues:
+      - true
+      - false
 
   Ec2Mode:
     Type: String
@@ -136,7 +135,6 @@ Conditions:
   NotNullDbUser: !Not [!Equals [!Ref DbUser, ""]]
   NotNullZkHost: !Not [!Equals [!Ref ZookeepersHost, ""]]
   NotNullSparkMasterHost: !Not [!Equals [!Ref SparkMasterNodeHost, ""]]
-  NotNullKylinMode: !Not [!Equals [!Ref Ec2KylinMode, ""]]
   IsProductMode: !Equals [!Ref Ec2Mode, "product"]
   ValidConfigurationForEc2: !And
     - !Condition NotNullSubnetId
@@ -145,7 +143,6 @@ Conditions:
     - !Condition NotNullDbPass
     - !Condition NotNullDbUser
     - !Condition NotNullZkHost
-    - !Condition NotNullKylinMode
     - !Condition NotNullSparkMasterHost
   IsAssociatedPublicIp: !Equals [!Ref AssociatedPublicIp, "true"]
 
@@ -199,7 +196,7 @@ Resources:
               #!/bin/bash -xe
               cd /home/ec2-user
               aws s3 cp ${PrivateBucketFullPath}/scripts/${PrivateKylin4ScriptFileName} . --region ${PrivateRegion}
-              bash ${PrivateKylin4ScriptFileName} --bucket-url ${PrivateBucketPath} --region ${PrivateRegion} --db-host ${PrivateDbHost} --db-password ${PrivateDbPass} --db-user ${PrivateDbUser} --db-port ${PrivateDbPort} --kylin-mode ${PrivaiteKylinMode} --local-soft ${PrivateLocalCacheSoftAffinity} --cluster-num ${PrivateClusterNum}
+              bash ${PrivateKylin4ScriptFileName} --bucket-url ${PrivateBucketPath} --region ${PrivateRegion} --db-host ${PrivateDbHost} --db-password ${PrivateDbPass} --db-user ${PrivateDbUser} --db-port ${PrivateDbPort} --local-soft ${PrivateLocalCacheSoftAffinity} --cluster-num ${PrivateClusterNum} --is-scaled ${PrivateIsScaled}
               echo " Kylin4 is ready ..."
             - PrivateBucketFullPath: !Ref BucketFullPath
               PrivateKylin4ScriptFileName: !Ref Kylin4ScriptFileName
@@ -209,9 +206,9 @@ Resources:
               PrivateDbPass: !Ref DbPassword
               PrivateDbUser: !Ref DbUser
               PrivateDbPort: !Ref DbPort
-              PrivaiteKylinMode: !Ref Ec2KylinMode
               PrivateLocalCacheSoftAffinity: !Ref LocalCacheSoftAffinity
               PrivateClusterNum: !Ref ClusterNum
+              PrivateIsScaled: !Ref IsScaled
 
 Outputs:
   IdOfInstance:
