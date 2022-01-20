@@ -711,10 +711,12 @@ class AWSInstance:
     def get_kylin_basic_msg_of_target_cluster(self, cluster_num: int = None) -> str:
         if not self.is_stack_complete(self.static_service_stack_name):
             return ''
+        if not self.is_stack_complete(self.get_kylin_stack_name(cluster_num=cluster_num)):
+            return ''
         res = Params.KYLIN_NAME_IN_CLUSTER.value.format(cluster=cluster_num if cluster_num else 'default') + '\t' \
-              + self.get_kylin_instance_id_of_target_cluster(cluster_num) + '\t' \
-              + self.get_kylin_private_ip_of_target_cluster(cluster_num) + '\t' \
-              + self.get_kylin_public_ip_of_target_cluster(cluster_num)
+              + self.get_kylin_instance_id_of_target_cluster(cluster_num=cluster_num) + '\t' \
+              + self.get_kylin_private_ip_of_target_cluster(cluster_num=cluster_num) + '\t' \
+              + self.get_kylin_public_ip_of_target_cluster(cluster_num=cluster_num)
         return res
 
     def get_kylin_stack_name(self, cluster_num: int = None) -> str:
@@ -760,8 +762,8 @@ class AWSInstance:
         """
 
         if cluster_num:
-            spark_master_stack = self.generate_stack_of_scaled_cluster_for_spark_master(num=cluster_num)
-            zk_stack = self.generate_stack_of_scaled_cluster_for_zk(num=cluster_num)
+            spark_master_stack = self.generate_stack_of_scaled_cluster_for_spark_master(cluster_num=cluster_num)
+            zk_stack = self.generate_stack_of_scaled_cluster_for_zk(cluster_num=cluster_num)
         else:
             spark_master_stack = self.spark_master_stack_name
             zk_stack = self.zk_stack_name
@@ -1009,6 +1011,28 @@ class AWSInstance:
     def get_scaled_spark_workers_basic_msg(self) -> List:
         return self.get_scaled_spark_workers_basic_msg_of_target_cluster()
 
+    def get_spark_workers_of_target_cluster_msg(self, cluster_num: int = None) -> str:
+        if cluster_num:
+            spark_worker_stack_name = self.generate_stack_of_scaled_cluster_for_spark_worker(cluster_num)
+        else:
+            spark_worker_stack_name = self.spark_slave_stack_name
+
+        if not self.is_stack_complete(spark_worker_stack_name):
+            return []
+
+        res = [
+            Params.SPARK_WORKER_NAME_IN_CLUSTER.value.format(num=i, cluster=cluster_num) + '\t'
+            + self.get_specify_resource_from_output(
+                spark_worker_stack_name, Params.SPARK_WORKER_ID.value.format(num=i)) + '\t'
+            + self.get_specify_resource_from_output(
+                spark_worker_stack_name, Params.SPARK_WORKER_PRIVATE_IP.value.format(num=i)) + '\t'
+            + (self.get_specify_resource_from_output(
+                spark_worker_stack_name, Params.SPARK_WORKER_PUBLIC_IP.value.format(num=i))
+               if self.is_associated_public_ip else '')
+            for i in range(1, 4)
+        ]
+        return res
+
     def get_scaled_spark_workers_basic_msg_of_target_cluster(self, cluster_num: int = None) -> List:
         msgs = []
         for stack in self.scaled_target_spark_workers_stacks(cluster_num):
@@ -1050,17 +1074,17 @@ class AWSInstance:
         scaled_zk_stack_name = self.generate_stack_of_scaled_cluster_for_zk(cluster_num)
         self.terminate_stack_by_name(scaled_zk_stack_name)
 
-    def generate_stack_of_scaled_cluster_for_zk(self, num: int) -> str:
-        return f'{self.zk_stack_name}-scaled-{num}'
+    def generate_stack_of_scaled_cluster_for_zk(self, cluster_num: int) -> str:
+        return f'{self.zk_stack_name}-scaled-cluster-{cluster_num}'
 
-    def generate_stack_of_scaled_cluster_for_kylin(self, num: int) -> str:
-        return f'{self.kylin_stack_name}-scaled-{num}'
+    def generate_stack_of_scaled_cluster_for_kylin(self, cluster_num: int) -> str:
+        return f'{self.kylin_stack_name}-scaled-cluster-{cluster_num}'
 
-    def generate_stack_of_scaled_cluster_for_spark_master(self, num: int) -> str:
-        return f'{self.spark_master_stack_name}-scaled-{num}'
+    def generate_stack_of_scaled_cluster_for_spark_master(self, cluster_num: int) -> str:
+        return f'{self.spark_master_stack_name}-scaled-cluster-{cluster_num}'
 
-    def generate_stack_of_scaled_cluster_for_spark_worker(self, num: int) -> str:
-        return f'{self.spark_slave_stack_name}-scaled-{num}'
+    def generate_stack_of_scaled_cluster_for_spark_worker(self, cluster_num: int) -> str:
+        return f'{self.spark_slave_stack_name}-scaled-cluster-{cluster_num}'
 
     def scale_up_worker(self, worker_num: int, cluster_num: int = None) -> Optional[Dict]:
         """
@@ -1142,6 +1166,8 @@ class AWSInstance:
         self.exec_script_instance_and_return(name_or_id=instance_id, script=stop_command)
 
     def restart_prometheus_server(self) -> None:
+        if not self.is_stack_complete(self.static_service_stack_name):
+            return
         self.stop_prometheus_server()
         self.start_prometheus_server()
 
@@ -1745,6 +1771,9 @@ class AWSInstance:
                 if not msg:
                     continue
                 msgs.append(msg)
+
+            spark_workers_msgs_of_target_cluster = self.get_spark_workers_of_target_cluster_msg(num)
+            msgs.extend(spark_workers_msgs_of_target_cluster)
 
             scaled_kylins_msg_of_target_cluster = self.get_scaled_kylin_basic_msg_of_target_cluster(num)
             scaled_workers_msg_of_target_cluster = self.get_scaled_spark_workers_basic_msg_of_target_cluster(num)

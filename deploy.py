@@ -1,7 +1,5 @@
-import logging.config
-
 import argparse
-from typing import Union
+import logging.config
 
 from constant.deployment import DeployType, ScaleType, NodeType, Cluster
 
@@ -32,6 +30,7 @@ def deploy_on_aws(deploy_type: str, scale_type: str, node_type: str, cluster: st
             aws_engine.destroy_all_cluster()
             aws_engine.destroy_default_cluster()
             aws_engine.refresh_kylin_properties()
+            aws_engine.destroy_rds_and_vpc()
 
         if not cluster:
             aws_engine.destroy_default_cluster()
@@ -54,7 +53,7 @@ if __name__ == '__main__':
     logging.config.fileConfig('logging.ini')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--type", required=False, default=DeployType.DEPLOY.value, dest='type',
+    parser.add_argument("--type", required=False, default=DeployType.LIST.value, dest='type',
                         choices=[e.value for e in DeployType],
                         help="Use 'deploy' to create a cluster or 'destroy' to delete a cluster "
                              "or 'list' to list alive nodes.")

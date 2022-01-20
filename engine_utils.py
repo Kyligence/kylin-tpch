@@ -77,10 +77,10 @@ class EngineUtils:
 
     def scale_nodes(self, scale_type: str, node_type: str) -> None:
         logger.info(f'Current scaling {scale_type} {node_type} nodes.')
-        assert self.is_cluster_ready() is True, 'Cluster nodes must be ready.'
         self.validate_scale_type(scale_type)
 
         if scale_type == ScaleType.UP.value:
+            assert self.is_cluster_ready() is True, 'Cluster nodes must be ready.'
             self.aws.scale_up(node_type=node_type)
             self.aws.after_scale_up(node_type=node_type)
 
@@ -98,15 +98,10 @@ class EngineUtils:
             is_destroy: bool = False) -> None:
         logger.info(f"Current scaling {scale_type} {node_type} nodes "
                     f"in cluster {cluster_num if cluster_num else 'default'}.")
-        assert self.is_target_cluster_ready(cluster_num) is True, 'Cluster nodes must be ready.'
         self.validate_scale_type(scale_type)
 
         if scale_type == ScaleType.UP.value:
-            # specify upload kylin.properties for scaled kylin node in target cluster
-            if node_type == NodeType.KYLIN.value:
-                self.aws.init_kylin_properties(cluster_num)
-                self.upload_kylin_properties(cluster_num)
-
+            assert self.is_target_cluster_ready(cluster_num) is True, 'Cluster nodes must be ready.'
             self.aws.scale_up(node_type=node_type, cluster_num=cluster_num, is_destroy=is_destroy)
             self.aws.after_scale_up(node_type=node_type, cluster_num=cluster_num)
         else:
@@ -171,6 +166,9 @@ class EngineUtils:
         self.aws.destroy_clusters(cluster_nums=[cluster_num])
         self.aws.restart_prometheus_server()
 
+    def destroy_rds_and_vpc(self) -> None:
+        self.aws.destroy_rds_and_vpc()
+
     def is_cluster_ready(self) -> bool:
         if self.cloud_address:
             return True
@@ -194,10 +192,6 @@ class EngineUtils:
         packages = self.needed_tars()
         for package in packages:
             Utils.download_tar(filename=package)
-        assert Utils.files_in_tar() == 8, \
-            'Expected downloaded tars must be `8` ' \
-            'which contains [jdk, kylin, hive, hadoop, zookeeper, node_exporter' \
-            ', prometheus, spark].'
 
     def download_jars(self) -> None:
         logger.info("Downloading jars.")

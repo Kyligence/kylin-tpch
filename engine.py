@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Union, List
+from typing import List
 
 import yaml
 
@@ -25,14 +25,17 @@ class Engine:
         self.engine_utils = EngineUtils(self.config)
 
     def launch_default_cluster(self):
-        logger.info('Ec2: first launch Instances And Kylin nodes.')
+        logger.info('First launch default Kylin Cluster.')
         self.engine_utils.launch_default_cluster()
-        logger.info('Kylin Cluster already start successfully.')
+        logger.info('Default Kylin Cluster already start successfully.')
 
     def destroy_default_cluster(self):
-        logger.info('Ec2: destroy default useless nodes.')
+        logger.info('Start to destroy default Kylin Cluster.')
         self.engine_utils.destroy_default_cluster()
-        logger.info('Ec2: destroy useless nodes successfully.')
+        logger.info('Destroy default Kylin Cluster successfully.')
+
+    def destroy_rds_and_vpc(self) -> None:
+        self.engine_utils.destroy_rds_and_vpc()
 
     def list_alive_nodes(self) -> None:
         logger.info('Ec2: list alive nodes.')
@@ -41,6 +44,8 @@ class Engine:
 
     def scale_nodes(self, scale_type: str, node_type: str, cluster_num: int = None) -> None:
         self.engine_utils.validate_scale_range()
+        if cluster_num == 'all':
+            raise Exception('Current scale nodes not support to scale for `all` clusters.')
 
         if cluster_num:
             self.engine_utils.scale_nodes_in_cluster(
@@ -52,7 +57,7 @@ class Engine:
             self.engine_utils.scale_nodes(scale_type=scale_type, node_type=node_type)
 
         if node_type == NodeType.KYLIN.value and scale_type == ScaleType.UP.value:
-            logger.info(f'Current Kylin Node already scaled, please wait a moment to access it.')
+            logger.info(f'Note: Current Kylin Node already scaled, please wait a moment to access it.')
         logger.info(f"Current scaling {scale_type} {node_type} nodes "
                     f"in {cluster_num if cluster_num else 'default'} cluster successfully.")
 
@@ -62,14 +67,15 @@ class Engine:
         logger.info(f'Scaled {scale_type} cluster nodes successfully.')
 
     def launch_all_clusters(self) -> None:
-        logger.info(f'Current launch all clusters.')
+        logger.info(f'Current launch other clusters.')
         self.engine_utils.launch_all_cluster()
-        logger.info(f'Current launch all clusters successfully.')
+        logger.info(f'Current launch other clusters successfully.')
 
     def launch_cluster(self, cluster_num: int) -> None:
-        logger.info(f'Current launch launch cluster {cluster_num}.')
+        logger.info(f'Current launch cluster {cluster_num}.')
         self.engine_utils.launch_cluster(cluster_num=cluster_num)
         logger.info(f'Current launch cluster {cluster_num} successfully.')
+        logger.info(f'Please note that access to Kylin may wait a moment.')
 
     def destroy_all_cluster(self) -> None:
         logger.info(f'Current destroy all scaled cluster nodes.')
@@ -89,7 +95,10 @@ class Engine:
             return False
 
     def init_env(self) -> None:
-        # validate s3 bucket path
+        self._prepare_files()
+        self._prepare_services()
+
+    def _prepare_files(self) -> None:
         self.engine_utils.validate_s3_bucket()
         if self.is_inited_env():
             logger.info('Env already inited, skip init again.')
@@ -99,6 +108,8 @@ class Engine:
         self.engine_utils.upload_needed_files()
         # check again
         assert self.is_inited_env()
+
+    def _prepare_services(self) -> None:
         # create vpc, rds and monitor node for whole cluster
         self.engine_utils.prepare_for_cluster()
 

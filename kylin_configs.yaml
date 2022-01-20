@@ -58,7 +58,7 @@ DEPLOY_PLATFORM: &platform ec2
 
 # ============ Tool Configs ============
 ## Dangerous !!!
-## Optional: destroy all will delete rds and the vpc, please be careful.
+## Optional: destroy all will delete rds and the vpc and monitor node, please be careful.
 ALWAYS_DESTROY_ALL: false
 
 ## Open public Ip on Instances
@@ -83,20 +83,30 @@ CLUSTER_INDEXES: (1, 1)
 
 # Scale Nodes
 ## The format of kylin scale nodes range is `Tuple`.
-## Examples: (1, 3) means that cluster will scale up 3 nodes of kylin which nodes number will be 1, 2 and 3.
-## Now there are 4 kylin nodes which contains the one kylin node of initialization and scaled up nodes(1,2,3).
-## Specially, if user set range to be (1, 1) that means cluster only scale the one node which node number is 1.
-# TODO: fix document
+## Examples:
+##    KYLIN_SCALE_UP_NODES: (1, 3) means that cluster will scale up 3 nodes of kylin which nodes number will be 1, 2 and 3.
+##    Now there are 4 kylin nodes which contains the one kylin node of initialization and scaled up nodes(1,2,3).
+##    Specially, if user set range to be (1, 1) that means cluster only scale the one node which node number is 1.
+##    Same as KYLIN_SCALE_DOWN_NODES is for scaling down the scaled kylin nodes.
+## Note:
+##    1. As followed params is setting for all cluster, So if user want to scale the special cluster with
+##       special range then need to modify these params.
+##    2. ${KYLIN_SCALE_UP_NODES} must contain or equal to ${KYLIN_SCALE_DOWN_NODES}.
 KYLIN_SCALE_UP_NODES: (1, 3)
 KYLIN_SCALE_DOWN_NODES: (1, 3)
 
 ## The format of spark worker scale nodes range is `Tuple`.
-## Examples: (1, 3) means that cluster will scale up `3` nodes of spark workers which nodes number will be 1, 2 and 3.
-## Now there are 6 spark worker nodes which contains the `3` spark worker nodes of initialization and scaled up nodes(1,2,3).
-## Specially, if user set range to be (1, 1) that means cluster only scale the one node which node number is 1.
-# TODO: fix document
-SPARK_WORKER_SCALE_UP_NODES: (1, 2)
-SPARK_WORKER_SCALE_DOWN_NODES: (1, 2)
+## Examples:
+##    SPARK_WORKER_SCALE_UP_NODES:(1, 3) means that cluster will scale up `3` nodes of spark workers which nodes number will be 1, 2 and 3.
+##    Now there are 6 spark worker nodes which contains the `3` spark worker nodes of initialization and scaled up nodes(1,2,3).
+##    Specially, if user set range to be (1, 1) that means cluster only scale the one node which node number is 1.
+##    Same as KYLIN_SCALE_DOWN_NODES is for scaling down the scaled kylin nodes.
+## Note:
+##    1. As followed params is setting for all cluster, So if user want to scale the special cluster with
+##       special range then need to modify these params.
+##    2. ${SPARK_WORKER_SCALE_UP_NODES} must contain or equal to ${SPARK_WORKER_SCALE_DOWN_NODES}.
+SPARK_WORKER_SCALE_UP_NODES: (1, 3)
+SPARK_WORKER_SCALE_DOWN_NODES: (1, 3)
 
 ## DB identifier for status check
 DB_IDENTIFIER: &db_instance_id ec2-rds-kylin4

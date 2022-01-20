@@ -137,7 +137,7 @@ class Utils:
             if path in ['default', 'templates']:
                 continue
 
-            if not cluster_nums and path not in cluster_nums:
+            if not cluster_nums and (cluster_nums and path not in cluster_nums):
                 continue
 
             absolute_path = os.path.join(KYLIN_PROPERTIES_DIR, path)

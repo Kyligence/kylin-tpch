@@ -26,7 +26,7 @@ class AWS:
     def is_cluster_ready(self) -> bool:
         if self.is_instances_ready:
             return True
-        msg = f'Current cluster is not ready, please deploy cluster first.'
+        msg = f'Current cluster is not ready.'
         logger.warning(msg)
         return False
 
@@ -34,7 +34,7 @@ class AWS:
     def is_prepared_for_scale_cluster(self) -> bool:
         if self.is_prepared_for_cluster:
             return True
-        msg = f'Current env for scaling cluster is not ready, please check the vpc and rds.'
+        msg = f'Current env for deploying a cluster is not ready.'
         logger.warning(msg)
         return False
 
@@ -96,13 +96,7 @@ class AWS:
         self.cloud_instance.create_static_service_stack()
 
     def init_cluster(self) -> None:
-        # validate params before create cluster.
-        self.validate_params()
-
         if not self.is_instances_ready:
-            self.cloud_instance.create_vpc_stack()
-            self.cloud_instance.create_rds_stack()
-            self.cloud_instance.create_static_service_stack()
             self.cloud_instance.create_zk_stack()
             # Need to refresh its config and start them after created zks
             self.cloud_instance.after_create_zk_cluster()
@@ -152,16 +146,17 @@ class AWS:
         self.cloud_instance.terminate_spark_master_stack()
         self.cloud_instance.terminate_kylin_stack()
         self.cloud_instance.terminate_zk_stack()
-        self.cloud_instance.terminate_static_service_stack()
+        logger.info('Cluster terminated useless nodes.')
 
-        # TODO: terminate all
-        if self.is_destroy_all:
-            # destroy all will delete rds, please be careful.
-            self.cloud_instance.terminate_rds_stack()
-            self.cloud_instance.terminate_vpc_stack()
-        # Don't need to terminate vpc stack, because it's free resource on your aws if don't use it.
-        # Check again after terminated all node.
-        assert self.is_cluster_terminated, f'Cluster was not terminated clearly, please check.'
+    def destroy_rds_and_vpc(self) -> None:
+        if not self.is_destroy_all:
+            return
+        logger.info('Prepare to destroy RDS and VPC and monitor node.')
+        # destroy all will delete rds, please be careful.
+        self.cloud_instance.terminate_static_service_stack()
+        self.cloud_instance.terminate_rds_stack()
+        self.cloud_instance.terminate_vpc_stack()
+        logger.info('Destroy RDS and VPC and monitor node done.')
 
     def alive_nodes(self):
         cluster_nums = self.generate_scaled_cluster_nums()
@@ -186,7 +181,7 @@ class AWS:
 
     def scale_down(self, node_type: str, cluster_num: int = None, is_destroy: bool = False) -> None:
         self.validate_node_type(node_type)
-        node_nums = self.generate_scaled_down_list(node_type)
+        node_nums = self.generate_scaled_down_list(node_type, is_destroy=is_destroy)
 
         exec_pool = ThreadPoolExecutor(max_workers=10)
         with exec_pool as pool:
@@ -215,11 +210,19 @@ class AWS:
 
     def launch_cluster(self, cluster_num: int) -> None:
         # Before scale up cluster, check the related kylin.properties must exists.
+        self.validate_cluster(cluster_num=cluster_num)
         self.is_kylin_properties_exists(cluster_num=cluster_num)
         self.cloud_instance.scale_up_basic_services_for_cluster(cluster_num=cluster_num)
         self.init_kylin_properties(cluster_num=cluster_num)
         self.upload_kylin_properties(cluster_num=cluster_num)
         self.cloud_instance.scale_up_kylin_for_cluster(cluster_num=cluster_num)
+
+    def validate_cluster(self, cluster_num: int) -> None:
+        cluster_nums = self.generate_scaled_cluster_nums()
+        if cluster_num not in cluster_nums:
+            msg = f'Cluster index: {cluster_num} not in the ' \
+                  f'range of {self.config[Config.CLUSTER_INDEXES.value]}, please check.'
+            raise Exception(msg)
 
     def scale_down_cluster(self) -> None:
         cluster_nums = self.generate_scaled_cluster_nums()
@@ -358,16 +361,24 @@ class AWS:
             worker_nodes = literal_eval(self.config[Config.SPARK_WORKER_SCALE_UP_NODES.value])
             return Utils.generate_nodes(worker_nodes)
 
-    def generate_scaled_down_list(self, node_type: str) -> List:
+    def generate_scaled_down_list(self, node_type: str, is_destroy: bool = False) -> List:
         if node_type == NodeType.KYLIN.value:
-            kylin_nodes = literal_eval(self.config[Config.KYLIN_SCALE_DOWN_NODES.value])
+            if is_destroy:
+                scaled_range = self.config[Config.KYLIN_SCALE_UP_NODES.value]
+            else:
+                scaled_range = self.config[Config.KYLIN_SCALE_DOWN_NODES.value]
+            kylin_nodes = literal_eval(scaled_range)
             return Utils.generate_nodes(kylin_nodes)
         else:
-            worker_nodes = literal_eval(self.config[Config.SPARK_WORKER_SCALE_DOWN_NODES.value])
+            if is_destroy:
+                scaled_range = self.config[Config.SPARK_WORKER_SCALE_UP_NODES.value]
+            else:
+                scaled_range = self.config[Config.SPARK_WORKER_SCALE_DOWN_NODES.value]
+            worker_nodes = literal_eval(scaled_range)
             return Utils.generate_nodes(worker_nodes)
 
     def generate_scaled_cluster_nums(self) -> List:
-        cluster_nums = literal_eval(self.config[Config.CLUSTER_SCALE_INDEXES.value])
+        cluster_nums = literal_eval(self.config[Config.CLUSTER_INDEXES.value])
         return Utils.generate_nodes(cluster_nums)
 
     def validate_s3_bucket(self) -> None:
