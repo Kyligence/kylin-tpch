@@ -543,6 +543,7 @@ $ python ./deploy.py --type list
 > 4. Scale params which are `KYLIN_SCALE_UP_NODES`, `KYLIN_SCALE_DOWN_NODES`, `SPARK_WORKER_SCALE_UP_NODES` and `SPARK_WORKER_SCALE_DOWN_NODES` effect on all cluster. So if user want to scale node for a specify cluster, then modify the scale params before **every run time.**
 > 5. **(Important!!!)** Current cluster is created with default `3` spark workers and `1` kylin node. The `3` spark workers can not be scaled down. The `1`  kylin node also can not be scaled down.
 > 6. **(Important!!!)** Cluster can only scale up or down the range of nodes which is in  `KYLIN_SCALE_UP_NODES`, `KYLIN_SCALE_DOWN_NODES`, `SPARK_WORKER_SCALE_UP_NODES` and `SPARK_WORKER_SCALE_DOWN_NODES` . Not the default `3` spark workers and `1` kylin node in the cluster.
+> 7. **(Important!!!)**  If user don't want to create a cluster with `3` default spark workers, then user can remove the useless node module in the `Ec2InstanceOfSlave0*` of `kylin-tpch/cloudformation_templates/ec2-cluster-spark-slave.yaml`. User need to know about the syntax of cloudformation as also.
 
 - Scale up/down kylin/spark workers in default cluster
 
