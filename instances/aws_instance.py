@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError, WaiterError, ParamValidationError
 from constant.client import Client
 from constant.commands import Commands
 from constant.config import Config
-from constant.deployment import NodeType
+from constant.deployment import NodeType, Cluster
 from constant.path import JARS_PATH, TARS_PATH, SCRIPTS_PATH, KYLIN_PROPERTIES_TEMPLATE_DIR
 from constant.yaml_files import File
 from constant.yaml_params import Params
@@ -769,7 +769,7 @@ class AWSInstance:
             zk_stack = self.zk_stack_name
 
         if not cluster_num:
-            cluster_num = 'default'
+            cluster_num = Cluster.DEFAULT.value
 
         stack_name = Params.KYLIN_SCALE_TARGET_CLUSTER_STACK_NAME.value.format(
             num=kylin_num, cluster=cluster_num)
@@ -798,7 +798,7 @@ class AWSInstance:
 
     def scale_down_kylin(self, kylin_num: int, cluster_num: int = None) -> Optional[Dict]:
         if not cluster_num:
-            cluster_num = 'default'
+            cluster_num = Cluster.DEFAULT.value
         stack_name = Params.KYLIN_SCALE_TARGET_CLUSTER_STACK_NAME.value.format(num=kylin_num, cluster=cluster_num)
         self._validate_kylin_of_target_cluster_scale(stack_name=stack_name, cluster_num=cluster_num)
 
@@ -1097,7 +1097,7 @@ class AWSInstance:
             spark_master_stack = self.spark_master_stack_name
 
         if not cluster_num:
-            cluster_num = 'default'
+            cluster_num = Cluster.DEFAULT.value
 
         stack_name = Params.SPARK_WORKER_SCALE_TARGET_CLUSTER_STACK_NAME.value.format(
             num=worker_num, cluster=cluster_num)
@@ -1122,7 +1122,7 @@ class AWSInstance:
 
     def scale_down_worker(self, worker_num: int, cluster_num: int = None) -> Optional[Dict]:
         if not cluster_num:
-            cluster_num = 'default'
+            cluster_num = Cluster.DEFAULT.value
 
         stack_name = Params.SPARK_WORKER_SCALE_TARGET_CLUSTER_STACK_NAME.value.format(
             num=worker_num, cluster=cluster_num)

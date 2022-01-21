@@ -20,3 +20,4 @@ class NodeType(Enum):
 
 class Cluster(Enum):
     ALL = 'all'
+    DEFAULT = 'default'

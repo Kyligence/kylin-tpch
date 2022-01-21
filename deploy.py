@@ -19,7 +19,7 @@ def deploy_on_aws(deploy_type: str, scale_type: str, node_type: str, cluster: st
             aws_engine.launch_default_cluster()
             aws_engine.launch_all_clusters()
 
-        if not cluster:
+        if not cluster or cluster == Cluster.DEFAULT.value:
             aws_engine.launch_default_cluster()
 
         if cluster and cluster.isdigit():
@@ -32,7 +32,7 @@ def deploy_on_aws(deploy_type: str, scale_type: str, node_type: str, cluster: st
             aws_engine.refresh_kylin_properties()
             aws_engine.destroy_rds_and_vpc()
 
-        if not cluster:
+        if not cluster or cluster == Cluster.DEFAULT.value:
             aws_engine.destroy_default_cluster()
             aws_engine.refresh_kylin_properties_in_default()
 
@@ -70,11 +70,12 @@ if __name__ == '__main__':
     # special choices for cluster
     cluster_choices = [str(num) for num in range(1, 6)]
     cluster_choices.append('all')
+    cluster_choices.append('default')
     parser.add_argument("--cluster", required=False, dest='cluster', type=str,
                         choices=cluster_choices,
                         help="Use the `num` in the range `CLUSTER_INDEXES` to specify a cluster index "
                              "which can mark what cluster nodes would be deployed or destroyed."
                              "This param must be used with '--type', "
-                             "default is to deploy or destroy nodes of default cluster.")
+                             "`default` is for to deploy or destroy nodes of `default` cluster.")
     args = parser.parse_args()
     deploy_on_aws(args.type, args.scale_type, args.node_type, args.cluster)

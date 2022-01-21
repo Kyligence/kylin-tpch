@@ -155,11 +155,11 @@ EC2_STATIC_SERVICES_PARAMS:
   DbPassword: *DbPassword
 
   StaticServicesScriptFileName: prepare-ec2-env-for-static-services.sh
-  Ec2Mode: test
+  Ec2Mode: product
   # followed params is invalid if Ec2Mode(which set in the yaml) is 'test'
-  Ec2InstanceTypeForStaticServices: m5.2xlarge
-  Ec2VolumeSizeForStaticServicesNode: '20'
-  Ec2VolumnTypeForStaticServicesNode: gp2
+  Ec2InstanceTypeForStaticServices: m5.4xlarge
+  Ec2VolumeSizeForStaticServicesNode: '50'
+  Ec2VolumnTypeForStaticServicesNode: standard
 
 EC2_ZOOKEEPERS_PARAMS:
   # None value can be passed by the pre-step output, so params need to wait pre-step complete.

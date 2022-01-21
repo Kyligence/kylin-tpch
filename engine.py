@@ -6,7 +6,7 @@ import yaml
 
 from constant.client import Client
 from constant.config import Config
-from constant.deployment import ScaleType, NodeType
+from constant.deployment import ScaleType, NodeType, Cluster
 from constant.yaml_files import File
 from engine_utils import EngineUtils
 
@@ -44,7 +44,7 @@ class Engine:
 
     def scale_nodes(self, scale_type: str, node_type: str, cluster_num: int = None) -> None:
         self.engine_utils.validate_scale_range()
-        if cluster_num == 'all':
+        if cluster_num == Cluster.ALL.value:
             raise Exception('Current scale nodes not support to scale for `all` clusters.')
 
         if cluster_num:

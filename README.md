@@ -24,7 +24,11 @@ When cluster was created, services and nodes will like below:
 
 1. Initialize aws account credential on local mac, please check [details](#localaws).
    
-2. Download the source code: `git clone https://github.com/Kyligence/kylin-tpch.git && cd kylin-tpch && git checkout deploy-kylin-on-aws `.
+2. Download the source code: 
+   
+   ```she
+   git clone https://github.com/Kyligence/kylin-tpch.git && cd kylin-tpch && git checkout deploy-kylin-on-aws
+   ```
    
 3. Modify the `kylin-tpch/kylin_config.yml`.
    
@@ -47,20 +51,18 @@ When cluster was created, services and nodes will like below:
 4. Init local env.
 
 ```She
-$ cd $KYLIN_TPCH_HOME
-
-$ ./bin/init.sh
+$KYLIN_TPCH_HOME/bin/init.sh
 ```
 
-> Note: Follow the information into a python virtual env and get the help messages. 
+> Note: Following the information into a python virtual env and get the help messages. 
 
-5. Execute commands to deploy a cluster.
+5. Execute commands to deploy a `default` cluster.
 
 ```she
-$ python ./deploy.py --type deploy
+$ python ./deploy.py --type deploy [--cluster default]
 ```
 
-After cluster is ready, you will see the message `Kylin Cluster already start successfully.` in the console. 
+After `default` cluster is ready, you will see the message `Kylin Cluster already start successfully.` in the console. 
 
 6. Execute commands to list nodes of cluster.
 
@@ -70,12 +72,12 @@ $ python ./deploy.py --type list
 
 Then you can check the `public ip` of Kylin Node.
 
-You can visit Kylin web by `http://{kylin public ip}:7070/kylin`.
+You can access `Kylin` web by `http://{kylin public ip}:7070/kylin`.
 
-7. Destroy the cluster.
+7. Destroy the `default` cluster.
 
 ```she
-$ python ./deploy.py --type destroy
+$ python ./deploy.py --type destroy [--cluster default]
 ```
 
 
@@ -92,47 +94,33 @@ $ python ./deploy.py --type destroy
    > 2. If user create multiple clusters, `default` cluster always be created. If `CLUSTER_INDEXES` is (1, 3), there will be 4 cluster which contains the cluster 1, 2, 3 and `default` will be created if user execute the commands.
    > 3. Configs for multiple clusters always are same as the `default` cluster to read from `kylin-tpch/kylin_configs.yaml`
 
-2. Copy `kylin.properties.template` for scale clusters, please check the [details](#cluster). 
+2. Copy `kylin.properties.template` for expecting clusters to deploy, please check the [details](#cluster). 
 
-3. Execute commands to scale a cluster.
-
-   > Note:
-   >
-   > ​	User can deploy a cluster then to scale a other cluster to make the env of `Read-Write Separation Cluster`.
+3. Execute commands to deploy `all` clusters.
 
    ```shell
-   python ./deploy.py --type scale --scale-type up --node-type cluster
+   python ./deploy.py --type deploy --cluster all
    ```
 
-4. Destroy the clusters.
-
-   > Note:
-   >
-   > ​	Destroy scaled clusters must scale down cluster then continue to execute destroy command.
+4. Destroy all clusters.
 
    ```shell
-   python ./deploy.py --type scale --scale-type down --node-type cluster
+   python ./deploy.py --type destroy --cluster all
    ```
 
-   ```she
-   python ./deploy.py --type destroy
-   ```
+
 
 ## Prerequisites 
 
-### Clone repo & checkout to branch of `deploy-kylin-on-aws`
+### Download source code & checkout to branch of `deploy-kylin-on-aws`
 
 commands:
 
-`$ git clone https://github.com/Kyligence/kylin-tpch.git` 
+```she
+git clone https://github.com/Kyligence/kylin-tpch.git && cd kylin-tpch && git checkout deploy-kylin-on-aws
+```
 
-`$ cd kylin-tpch`
-
-`$ git checkout deploy-kylin-on-aws`
-
-
-
-### Initiliaze AWS Account
+### Initiliaze an AWS Account
 
 #### I. Create an `IAM` role<a name="IAM"></a> 
 
@@ -197,13 +185,11 @@ Example: make a directory named `kylin4-aws-test` . You can also create a direct
 
 
 
-#### (Optional) II. Manually Download packages & Upload them to the S3 path which suffix is `*/tar`
+#### **(Optional)** II. Manually Download packages & Upload them to the S3 path which suffix is `*/tar`
 
 > Note:
 >
 > ​	This step will automatically do by tools. So you can skip this step, or you want to check packages by yourself.
-
-
 
 
 
@@ -303,7 +289,9 @@ Default output format : json
 
 commands: 
 
-`$ ./bin/init.sh`
+```she
+$ ./bin/init.sh
+```
 
 > Note: Follow the information after `./bin/init.sh` to activate the python virtual env.
 
@@ -325,8 +313,8 @@ commands:
 
 1. The `kylin.properties` is for starting kylin instance in the cluster.
 2. Default cluster will check the `kylin.properties` in the `kylin-tpch/backup/properties/default`, and other specific cluster will check the related num directory such as `1`, `2` and `3`.
-3. User need to create new dir for the cluster num in `kylin-tpch/backup/properties`, and name it to the `{cluster num}`, such as `1`, `2` ,`3`  and so on. The range of cluster num must be in `CLUSTER_INDEXES` which is configured in the `kylin-tpch/kylin_configs.yml`.
-4. Follow the `2.` step, copy the `kylin.properties.template` which is in `kylin-tpch/backup/properties/templates` to the related `{cluster num} ` directories， and rename the template to `kylin.properties`. 
+3. User need to create new dir for the cluster num in `kylin-tpch/backup/properties`, and name it to the `${cluster num}`, such as `1`, `2` ,`3`  and so on. The range of cluster num must be in `CLUSTER_INDEXES` which is configured in the `kylin-tpch/kylin_configs.yml`.
+4. Follow the `2.` step, copy the `kylin.properties.template` which is in `kylin-tpch/backup/properties/templates` to the related `${cluster num} ` directories， and rename the template to `kylin.properties`. 
 5. The range of cluster nums must match the the config `CLUSTER_INDEXES`, such as `CLUSTER_INDEXES: (1, 3)` then the directories must be `1`, `2`,`3` in the `kylin-tpch/backup/properties`.
 
 ![kylin properties](./images/kylinproperties.png)
@@ -337,52 +325,75 @@ commands:
 
 ![rendered kylin properties](./images/renderedkylinproperties.png)
 
-7. (Important !!!) If you want to re-fill the `kylin.properties` for a `kylin` node in specify cluster,  you need to remove the `.rendered` file and re-copy the `kylin.propertie.template` . Redo steps from `3` to `6`.
+7. **(Important !!!)** If you want to re-fill the `kylin.properties` for a `kylin` node in specify cluster,  you need to remove the `.rendered` file and re-copy the `kylin.propertie.template` . Redo steps from `3` to `6`.
 
-### Advanced Configs
+## Advanced Configs
 
 > Note:
 >
-> ​	If you want quickly to start Kylin4 Cluster on aws, then skip this part and jump to the part of  `Run` directly. 
+> ​	If you want quickly to start Kylin4 Cluster on aws, then skip this part and jump to the part of  [`Run`](#run) directly. 
+
+### Advaced Params
 
 There are `9` modules params for tools.  Introductions as below:
 
 - EC2_VPC_PARAMS: this params of module are for creating a vpc.
+
 - EC2_RDS_PARAMS: this params of module are for creating a RDS.
+
 - EC2_STATIC_SERVICES_PARAMS: this params of module are for creating a Prometheus Server and other static services.
+
 - EC2_ZOOKEEPERS_PARAMS: this params of module are for creating a Zookeeper Cluster.
+
 - EC2_SPARK_MASTER_PARAMS: this params of module are for creating a Spark Master node.
+
 - EC2_KYLIN4_PARAMS: this params of module are for creating a Kylin4.
-- EC2_SPARK_WORKER_PARAMS: this params of module are for creating **Spark Workers**, default is **3** spark workers.
-- EC2_KYLIN4_SCALE_PARAMS: this params of module are for scaling **Kylin4 nodes**, **Kylin4 nodes range** is related to `KYLIN_SCALE_UP_NODES`.
-- EC2_SPARK_SCALE_SLAVE_PARAMS: this params of module are for scaling **Spark workers**, **Spark Workers range** is related to `SPARK_WORKER_SCALE_UP_NODES`.
+
+- EC2_SPARK_WORKER_PARAMS: this params of module are for creating **Spark Workers**, default is **3** spark workers for all clusters.
+
+- EC2_KYLIN4_SCALE_PARAMS: this params of module are for scaling **Kylin4 nodes**, the range of **Kylin4 nodes** is related to `KYLIN_SCALE_UP_NODES` and `KYLIN_SCALE_DOWN_NODES`.
+
+  > Note:
+  >
+  > 	1. `KYLIN_SCALE_UP_NODES` is for the range of kylin nodes to scale up. 
+  > 	1. `KYLIN_SCALE_DOWN_NODES` is for the range of kylin nodes to scale down.
+  > 	1. The range of `KYLIN_SCALE_UP_NODES` must be contain the range of `KYLIN_SCALE_DOWN_NODES`.
+  > 	1. **They are effective to all clusters which is not only `default cluster` but also other cluster which index is in `${CLUSTER_INDEXES}`.**
+
+- EC2_SPARK_SCALE_SLAVE_PARAMS: this params of module are for scaling **Spark workers**, the range of **Spark Workers ** is related to `SPARK_WORKER_SCALE_UP_NODES` and `SPARK_WORKER_SCALE_DOWN_NODES`.
+
+  > Note:
+  >
+  > 	1. `SPARK_WORKER_SCALE_UP_NODES` is for the range for spark workers to scale up. **It's effective to all clusters which is not only `default cluster` but also other cluster which index is in `${CLUSTER_INDEXES}`.**
+  > 	1. `SPARK_WORKER_SCALE_DOWN_NODES` is for the range for spark workers to scale down. **It's effective to all clusters which is not only `default cluster` but also other cluster which index is in `${CLUSTER_INDEXES}`.**
+  > 	1. The range of `SPARK_WORKER_SCALE_UP_NODES` must be contain the range of `SPARK_WORKER_SCALE_DOWN_NODES`.
+  > 	1. **They are effective to all clusters which is not only `default cluster` but also other cluster which index is in `${CLUSTER_INDEXES}`.**
+
+### Customize Configs
+
+User also can customize the params in `kylin-tpch/kylin_configs.yaml` to create an expected instances. Such as **the type of instance**, **the volume size of instance** and **the volumn type of instance** and so on.
+
+1. If you want to customize configs for instances, you must modify the `EC2Mode` from `test` to `product` in the ``kylin-tpch/kylin_configs.yml`.
+2. `Ec2Mode` is only in the parms of `EC2_STATIC_SERVICES_PARAMS`, `EC2_ZOOKEEPERS_PARAMS`, `EC2_SPARK_MASTER_PARAMS`, `EC2_KYLIN4_PARAMS`, `EC2_SPARK_WORKER_PARAMS`, `EC2_KYLIN4_SCALE_PARAMS` and `EC2_SPARK_SCALE_SLAVE_PARAMS`.
+3. So instances can be customized to effect `Monitor Node`(`EC2_STATIC_SERVICES_PARAMS`), `Zookeeper Nodes`(`EC2_ZOOKEEPERS_PARAMS`), `Spark Master Node` ( `EC2_SPARK_MASTER_PARAMS`), `Kylin4 Node`( `EC2_KYLIN4_PARAMS`), `Spark workers `(`EC2_SPARK_WORKER_PARAMS`), `Kylin4 scale nodes`(`EC2_KYLIN4_SCALE_PARAMS`) and `Spark scale workers`(`EC2_SPARK_SCALE_SLAVE_PARAMS`).
+4. Now`Ec2Mode` **only effect** the related params are `Ec2InstanceTypeFor*`,`Ec2VolumeSizeFor*`  and `Ec2VolumnTypeFor`* in the params modules.
+5. If you don't change `ENABLE_LOCAL_CACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature!
 
 
 
-User also can customize the params in `kylin-tpch/kylin_configs.yaml` to create an expected instances. Such as the type of instance, the volume size of instance and volumn type of instance and so on.
+#### Example
 
-> Note:	
->
-> 1. If you don't change `EC2Mode` from `test` to `product` in the ``kylin-tpch/kylin_configs.yml` then services will be created in default configuration! 
->    - As an example in `EC2_STATIC_SERVICES_PARAMS`:
->      - change `Ec2Mode `  from `test`to `product`
->      - change `Ec2InstanceTypeForStaticServices`  from `m5.2xlarge` to `m5.4xlarge`.
->      - change `Ec2VolumeSizeForStaticServicesNode`  from `'20'` to `'50'.`
->      - change `Ec2VolumnTypeForStaticServicesNode` from `gp2` to `standard`.
->      - then create the node of static service node will be a ``m5.4xlarge` and it attach a volume which size is `50` and type is `standard`.
-> 2. Now`Ec2Mode` **only effect** the related params are `Ec2InstanceTypeFor*`,`Ec2VolumeSizeFor*`  and `Ec2VolumnTypeFor`* in the params modules.
-> 3. `Ec2Mode` is only in [`EC2_STATIC_SERVICES_PARAMS`, `EC2_ZOOKEEPERS_PARAMS`, `EC2_SPARK_MASTER_PARAMS`, `EC2_KYLIN4_PARAMS`, `EC2_SPARK_WORKER_PARAMS`, `EC2_KYLIN4_SCALE_PARAMS`, `EC2_SPARK_SCALE_SLAVE_PARAMS`].
-> 4. If you don't change `ENABLE_LOCAL_CACHE_SOFT_AFFINITY` from `"false"` to `"true"` then cluster will created normally without `Local Cache + Soft Affinity` feature!
+As an example in `EC2_STATIC_SERVICES_PARAMS`:
 
-## Notes
+- change `Ec2Mode `  from `test`to `product`
+- change `Ec2InstanceTypeForStaticServices`  from `m5.2xlarge` to `m5.4xlarge`.
+- change `Ec2VolumeSizeForStaticServicesNode`  from `'20'` to `'50'.`
+- change `Ec2VolumnTypeForStaticServicesNode` from `gp2` to `standard`.
+- Then create the node of static service node will be a ``m5.4xlarge` and it attach a volume which size is `50` and type is `standard`.
 
-1. Current tool already open the port for some services. You can access the service by `public ip` of related EC2 instance.
-   1. `SSH`: 22
-   2. `Granfana`:  3000
-   3. `Prmetheus`:  9090, 9100
-   4. `Kylin`: 7070
-   5. `Spark`: 8080. 4040.
-2. More about cloudformation syntax, please check [aws website](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html).
+![static service params](./images/staticserviceparam.png)
+
+
 
 ## Monitor
 
@@ -428,7 +439,7 @@ More details about `PromQL` for metric exploer, please check [official website](
 
 ![granfana 3](./images/granfana3.png)
 
-> Just config the url with syntax `http://{private ip of static service}:9090` which `private ip of static service` can be from the `python ./deploy.py --type list` command.
+> Just config the url with syntax `http://${private ip of static service}:9090` . The `private ip of static service` can be from the `python ./deploy.py --type list` command.
 
 3. Add a new panel.
 
@@ -444,73 +455,119 @@ More details about `PromQL` for metric exploer, please check [official website](
 
 More details about the usage of Granfana in [official website](https://grafana.com/docs/grafana/latest/).
 
-## Run
+## Run<a name="run"></a>
 
-Use `python ./deploy.py --type [deploy|destroy|list|scale] --scale-type [up|down] --node-type [kylin|spark_worker|cluster] [--cluster {1..6}]`  to control cluster.
-- deploy: create a cluster
+Command:
 
-- destroy: destroy a created cluster
+```she
+python ./deploy.py --type [deploy|destroy|list|scale] --scale-type [up|down] --node-type [kylin|spark_worker] [--cluster {1..6}|all|default]
+```
 
-- list: list alive nodes which are with stack name and instance id
+- deploy: create cluster(s).
 
-- scale: User must be used with `--scale-type` and `--node-type`
+- destroy: destroy created cluster(s).
+
+- list: list alive nodes which are with stack name, instance id, private ip and public ip.
+
+- scale: Must be used with `--scale-type` and `--node-type`.
 
   > Note:
   >
-  > 1. Current support to scale up/down `kylin` or `spark_worker` or `cluster`.
-  > 2. Before scale up/down `kylin` or `spark_worker` nodes, Cluster must be ready .
-  > 2. If you want to scale a `kylin` or `spark_worker` node to a specify cluster, please add the `--cluster {cluster num}` to specify the node add to the cluster.
+  > 1. Current support to scale up/down `kylin` or `spark_worker` for specific cluster.
+  > 2. Before scale up/down `kylin` or `spark_worker` nodes, Cluster services must be ready.
+  > 2. If you want to scale a `kylin` or `spark_worker` node to a specify cluster, please add the `--cluster ${cluster num}` to specify the expected node add to the cluster `${cluster num}`.
 
-### Examples
+### Command of deploy
 
-#### Basic
+- Deploy default cluster
 
-- Create a default cluster
-
-```sh
-$ python ./deploy.py --type deploy
+```shell
+$ python ./deploy.py --type deploy [--cluster default]
 ```
 
-- Desctroy a created default cluster
+- Deploy a cluster with specific cluster index. 
 
-```sh
-$ python ./deploy.py --type destroy
+```shell
+$ python ./deploy.py --type deploy --cluster ${cluster num}
 ```
 
-- List all alive nodes which will contains the `Stack Name`,`Instance Id`,`Public Id` and `Private Ip`.
+> Note: the `${cluster num}` must be in the range of `CLUSTER_INDEXES`.
 
-```sh
+- Deploy all cluster which contain default cluster and all cluster which index in the range of `CLUSTER_INDEXES`.
+
+```sHe
+$ python ./deploy.py --type deploy --cluster all
+```
+
+### Command of destroy
+
+> Note:
+>
+> ​		Destroy all cluster will not delete vpc, rds and monitor node. So if user don't want to hold the env, please set the `ALWAYS_DESTROY_ALL` to be `'true'`.
+
+- Destroy default cluster
+
+```she
+$ python ./deploy.py --type destroy [--cluster default]
+```
+
+- Destroy a cluster with specific cluster index. 
+
+```shell
+$ python ./deploy.py --type destroy --cluster ${cluster num}
+```
+
+> Note: the `${cluster num}` must be in the range of `CLUSTER_INDEXES`.
+
+- Destroy all cluster which contain default cluster and all cluster which index in the range of `CLUSTER_INDEXES`.
+
+```shell
+$ python ./deploy.py --type destroy --cluster all
+```
+
+### Command of list
+
+- List nodes which are with **stack name**, **instance id**, **private ip** and **public ip** in **available stacks** .
+
+```shell
 $ python ./deploy.py --type list
 ```
 
-#### Advanced
+### Command of scale
 
-- Scale up or down kylin nodes in default cluster
+> Note:
+>
+> 1. Scale command must be used with `--scale-type` and `--node-type`.
+> 2. If scale command not specify a cluster num, then the scaled node(kylin or spark worker) will be add to `default`cluster.
+> 3. Scale command **not support** to **scale** node (kylin or spark worker) to **all clusters** at **one time**. It means that `python ./deploy.py --type scale --scale-type up[|down] --node-type kylin[|spark_worker] --cluster all` is invalid commad.
+> 4. Scale params which are `KYLIN_SCALE_UP_NODES`, `KYLIN_SCALE_DOWN_NODES`, `SPARK_WORKER_SCALE_UP_NODES` and `SPARK_WORKER_SCALE_DOWN_NODES` effect on all cluster. So if user want to scale node for a specify cluster, then modify the scale params before **every run time.**
+> 5. **(Important!!!)** Current cluster is created with default `3` spark workers and `1` kylin node. The `3` spark workers can not be scaled down. The `1`  kylin node also can not be scaled down.
+> 6. **(Important!!!)** Cluster can only scale up or down the range of nodes which is in  `KYLIN_SCALE_UP_NODES`, `KYLIN_SCALE_DOWN_NODES`, `SPARK_WORKER_SCALE_UP_NODES` and `SPARK_WORKER_SCALE_DOWN_NODES` . Not the default `3` spark workers and `1` kylin node in the cluster.
 
-```sh
-$ python ./deploy.py --type scale --scale-type up[|down] --node-type kylin
-```
-
-- Scale up or down spark-worker nodes in default cluster
-
-```sh
-$ python ./deploy.py --type scale --scale-type up[|down] --node-type spark_worker
-```
-
-- Scale up or down clusters for the specific scene, please check the [details](#cluster).
+- Scale up/down kylin/spark workers in default cluster
 
 ```shell
-$ python ./deploy.py --type scale --scale-type up[|down] --node-type cluster
+python ./deploy.py --type scale --scale-type up[|down] --node-type kylin[|spark_worker] [--cluster default]
 ```
 
-- Scale up or down kylin nodes in specific cluster
+- Scale up/down kylin/spark workers in a specific cluster
 
-```she
-$ python ./deploy.py --type scale --scale-type up[|down] --node-type kylin --cluster {cluster num}
+```shell
+python ./deploy.py --type scale --scale-type up[|down] --node-type kylin[|spark_worker] --cluster ${cluster num}
 ```
 
-- Scale up or down spark-worker nodes  in specific cluster
+> Note: the `${cluster num}` must be in the range of `CLUSTER_INDEXES`.
 
-```she
-$ python ./deploy.py --type scale --scale-type up[|down] --node-type spark_worker --cluster {cluster num}
-```
+
+
+## Notes
+
+1. Current tool already open the port for some services. You can access the service by `public ip` of related EC2 instance.
+   1. `SSH`: 22
+   2. `Granfana`:  3000
+   3. `Prmetheus`:  9090, 9100
+   4. `Kylin`: 7070
+   5. `Spark`: 8080. 4040.
+2. More about cloudformation syntax, please check [aws website](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html).
+3. Current Kylin version is 4.0.0.
+4. Current Spark version is 3.1.1.
