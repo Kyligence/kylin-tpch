@@ -59,7 +59,7 @@ $KYLIN_TPCH_HOME/bin/init.sh
 5. Execute commands to deploy a `default` cluster.
 
 ```she
-$ python ./deploy.py --type deploy [--cluster default]
+$ python ./deploy.py --type deploy
 ```
 
 After `default` cluster is ready, you will see the message `Kylin Cluster already start successfully.` in the console. 
@@ -77,7 +77,7 @@ You can access `Kylin` web by `http://{kylin public ip}:7070/kylin`.
 7. Destroy the `default` cluster.
 
 ```she
-$ python ./deploy.py --type destroy [--cluster default]
+$ python ./deploy.py --type destroy
 ```
 
 
