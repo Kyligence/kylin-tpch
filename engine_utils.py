@@ -110,19 +110,6 @@ class EngineUtils:
 
         self.aws.restart_prometheus_server()
 
-    def scale_cluster(self, scale_type: str) -> None:
-        assert self.is_prepared_for_scale_cluster() is True, 'Env for scaling cluster not ready, please check.'
-        self.validate_scale_type(scale_type)
-
-        if scale_type == ScaleType.UP.value:
-            self.aws.scale_up_cluster()
-            self.aws.after_scale_up_cluster()
-        else:
-            self.aws.after_scale_down_cluster()
-            self.aws.scale_down_cluster()
-
-        self.aws.restart_prometheus_server()
-
     def prepare_for_cluster(self) -> None:
         # create vpc, rds and monitor node for whole cluster
         if not self.is_prepared_for_scale_cluster():

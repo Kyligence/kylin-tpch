@@ -61,11 +61,6 @@ class Engine:
         logger.info(f"Current scaling {scale_type} {node_type} nodes "
                     f"in {cluster_num if cluster_num else 'default'} cluster successfully.")
 
-    def scale_cluster(self, scale_type: str) -> None:
-        logger.info(f'Current scaling {scale_type} cluster nodes.')
-        self.engine_utils.scale_cluster(scale_type=scale_type)
-        logger.info(f'Scaled {scale_type} cluster nodes successfully.')
-
     def launch_all_clusters(self) -> None:
         logger.info(f'Current launch other clusters.')
         self.engine_utils.launch_all_cluster()

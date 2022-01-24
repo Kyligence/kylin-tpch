@@ -127,19 +127,6 @@ class AWS:
         self.terminate_ec2_cluster()
 
     def terminate_ec2_cluster(self) -> Optional[Dict]:
-        # TODO: remove this scaled stacks check.
-        # cluster_nums = self.generate_scaled_cluster_nums()
-        # if not self.cloud_instance.is_scaled_stacks_in_clusters_terminated(
-        #         cluster_nums=cluster_nums):
-        #     msg = f'Scaled Stacks in the cluster was not clear, please terminate them ' \
-        #           f'and redo execute `destroy` commands.'
-        #     raise Exception(msg)
-        #
-        # if not self.cloud_instance.is_target_clusters_terminated(cluster_nums=cluster_nums):
-        #     msg = f'Stacks of clusters was not clear, please terminate them ' \
-        #           f'and redo execute `destroy` commands.'
-        #     raise Exception(msg)
-
         if self.is_cluster_terminated:
             return
         self.cloud_instance.terminate_spark_slave_stack()
@@ -190,17 +177,6 @@ class AWS:
             else:
                 pool.map(self.cloud_instance.scale_down_worker, node_nums, repeat(cluster_num, len(node_nums)))
 
-    def scale_up_cluster(self) -> None:
-        cluster_nums = self.generate_scaled_cluster_nums()
-        # Before scale up cluster, check the related kylin.properties must exists.
-        self.is_kylin_properties_exists_in_clusters(cluster_nums)
-
-        for num in cluster_nums:
-            self.cloud_instance.scale_up_basic_services_for_cluster(num)
-            self.init_kylin_properties(cluster_num=num)
-            self.upload_kylin_properties(cluster_num=num)
-            self.cloud_instance.scale_up_kylin_for_cluster(cluster_num=num)
-
     def launch_clusters(self, cluster_nums: List[int] = None) -> None:
         if not cluster_nums:
             cluster_nums = self.generate_scaled_cluster_nums()
@@ -223,11 +199,6 @@ class AWS:
             msg = f'Cluster index: {cluster_num} not in the ' \
                   f'range of {self.config[Config.CLUSTER_INDEXES.value]}, please check.'
             raise Exception(msg)
-
-    def scale_down_cluster(self) -> None:
-        cluster_nums = self.generate_scaled_cluster_nums()
-        for num in cluster_nums:
-            self.cloud_instance.destroy_cluster(num)
 
     def destroy_clusters(self, cluster_nums: List) -> None:
         if not cluster_nums:
@@ -268,21 +239,6 @@ class AWS:
             if node_type == NodeType.KYLIN.value:
                 self.cloud_instance.refresh_prometheus_spark_driver_of_kylin_after_scale_down(exists_nodes)
 
-    def after_scale_up_cluster(self) -> None:
-        cluster_nums = self.generate_scaled_cluster_nums()
-        logger.info(f"Checking exists prometheus config after scale up.")
-        not_exists_nodes = self.cloud_instance.check_prometheus_config_after_scale_cluster(cluster_nums)
-        not_exists_kylin_nodes, not_exists_spark_nodes = self.cloud_instance\
-            .check_spark_metric_config_after_scale_cluster(cluster_nums)
-        logger.info("Refresh prometheus config after scale up.")
-        if not_exists_nodes:
-            self.cloud_instance.refresh_prometheus_config_after_scale_up(not_exists_nodes)
-        if not_exists_kylin_nodes:
-            self.cloud_instance.refresh_prometheus_spark_metrics_of_kylin_in_cluster_after_scale_up(
-                not_exists_kylin_nodes)
-        if not_exists_spark_nodes:
-            self.cloud_instance.refresh_prometheus_spark_master_in_cluster_after_scale(not_exists_spark_nodes)
-
     def after_launch_clusters(self, cluster_nums: List[int] = None) -> None:
         # cluster_nums is none means deploy all cluster
         if not cluster_nums:
@@ -300,20 +256,6 @@ class AWS:
                 not_exists_kylin_nodes)
         if not_exists_spark_nodes:
             self.cloud_instance.refresh_prometheus_spark_master_in_cluster_after_scale(not_exists_spark_nodes)
-
-    def after_scale_down_cluster(self) -> None:
-        cluster_nums = self.generate_scaled_cluster_nums()
-        logger.info(f"Checking exists prometheus config after scale down.")
-        exists_nodes = self.cloud_instance.check_prometheus_config_after_scale_down_cluster(cluster_nums)
-        exists_kylin_nodes, exists_spark_nodes = self.cloud_instance \
-            .check_spark_metric_config_after_scale_down_cluster(cluster_nums)
-        logger.info("Refresh prometheus config after scale down.")
-        if exists_nodes:
-            self.cloud_instance.refresh_prometheus_config_after_scale_down(exists_nodes)
-        if exists_kylin_nodes:
-            self.cloud_instance.refresh_prometheus_config_after_scale_down(exists_kylin_nodes)
-        if exists_spark_nodes:
-            self.cloud_instance.refresh_prometheus_config_after_scale_down(exists_spark_nodes)
 
     def after_destroy_clusters(self, cluster_nums: List[int] = None) -> None:
         if not cluster_nums:
